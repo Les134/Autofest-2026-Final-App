@@ -9,6 +9,7 @@ import {
   where
 } from "firebase/firestore";
 
+// FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
   authDomain: "autofest-burnout-judging-848fd.firebaseapp.com",
@@ -18,6 +19,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// CONFIG
 const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
@@ -26,6 +28,7 @@ export default function App(){
 
   const [screen,setScreen] = useState("home");
   const [judge,setJudge] = useState("");
+  const [eventUnlocked,setEventUnlocked] = useState(false);
 
   const [data,setData] = useState([]);
   const [top150,setTop150] = useState([]);
@@ -41,19 +44,19 @@ export default function App(){
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
 
-  // SAFE FIREBASE LOAD
-  useEffect(() => {
-    async function load() {
-      try {
-        const q = await getDocs(collection(db, "scores"));
-        setData(q.docs.map(d => d.data()));
-      } catch (err) {
-        console.log("Firebase error:", err);
+  // LOAD DATA SAFELY
+  useEffect(()=>{
+    async function load(){
+      try{
+        const q = await getDocs(collection(db,"scores"));
+        setData(q.docs.map(d=>d.data()));
+      }catch(err){
+        console.log(err);
         setData([]);
       }
     }
     load();
-  }, []);
+  },[]);
 
   function setScore(cat,val){
     setScores(prev => ({ ...prev, [cat]: val }));
@@ -70,59 +73,56 @@ export default function App(){
       return alert("Complete all scores");
     }
 
-    try {
-      const q = query(
-        collection(db,"scores"),
-        where("judge","==",judge),
-        where("car","==",car)
-      );
+    const q = query(
+      collection(db,"scores"),
+      where("judge","==",judge),
+      where("car","==",car)
+    );
 
-      const existing = await getDocs(q);
-      if(!existing.empty){
-        return alert("Already scored this car");
-      }
-
-      let total = Object.values(scores).reduce((a,b)=>a+b,0);
-      let deductionCount = Object.values(deductions).filter(Boolean).length;
-      let finalScore = total - (deductionCount * 10);
-
-      const payload = {
-        judge, car, driver, rego, carName,
-        gender, carClass,
-        finalScore,
-        createdAt: new Date()
-      };
-
-      await addDoc(collection(db,"scores"), payload);
-      setData(prev => [...prev, payload]);
-
-      // reset
-      setScores({});
-      setDeductions({});
-      setCar("");
-      setDriver("");
-      setRego("");
-      setCarName("");
-      setGender("");
-      setCarClass("");
-
-    } catch(err){
-      alert("Save failed");
-      console.log(err);
+    const existing = await getDocs(q);
+    if(!existing.empty){
+      return alert("Already scored this car");
     }
+
+    let total = Object.values(scores).reduce((a,b)=>a+b,0);
+    let deductionCount = Object.values(deductions).filter(Boolean).length;
+    let finalScore = total - (deductionCount * 10);
+
+    const payload = {
+      judge, car, driver, rego, carName,
+      gender, carClass,
+      finalScore,
+      createdAt: new Date()
+    };
+
+    await addDoc(collection(db,"scores"), payload);
+    setData(prev => [...prev, payload]);
+
+    // RESET
+    setScores({});
+    setDeductions({});
+    setCar("");
+    setDriver("");
+    setRego("");
+    setCarName("");
+    setGender("");
+    setCarClass("");
   }
 
   function combineScores(){
     let combined = {};
-
     (data || []).forEach(e=>{
       let key = e.car || "Unknown";
       if(!combined[key]){
-        combined[key] = { car:e.car, total:0 };
+        combined[key] = {
+          car:e.car,
+          total:0,
+          carClass:e.carClass,
+          gender:e.gender
+        };
       }
       combined[key].total += e.finalScore;
     });
-
     return Object.values(combined);
   }
 
@@ -135,13 +135,15 @@ export default function App(){
     setScreen("top150");
   }
 
+  // ================= SCREENS =================
+
   // HOME
   if(screen === "home"){
     return (
       <div style={{padding:20}}>
         <h1>🔥 AutoFest 🔥</h1>
         <button onClick={()=>setScreen("event")}>Enter Event</button>
-        <button onClick={buildTop150}>View Results</button>
+        <button onClick={buildTop150}>Leaderboards</button>
       </div>
     );
   }
@@ -150,8 +152,13 @@ export default function App(){
   if(screen === "event"){
     return (
       <div style={{padding:20}}>
-        <h2>Event Access</h2>
-        <button onClick={()=>setScreen("judge")}>Continue</button>
+        <h2>Event Login</h2>
+        <button onClick={()=>{
+          setEventUnlocked(true);
+          setScreen("judge");
+        }}>
+          Unlock Event
+        </button>
       </div>
     );
   }
@@ -188,7 +195,7 @@ export default function App(){
     );
   }
 
-  // SCORING
+  // SCORE SCREEN
   return (
     <div style={{padding:20}}>
 
@@ -226,7 +233,7 @@ export default function App(){
       </div>
 
       <button onClick={submit}>Submit</button>
-      <button onClick={buildTop150}>Top 150</button>
+      <button onClick={buildTop150}>Leaderboards</button>
       <button onClick={()=>setScreen("home")}>Home</button>
 
     </div>
