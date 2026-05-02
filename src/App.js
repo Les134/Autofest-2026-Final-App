@@ -54,6 +54,8 @@ export default function App(){
   };
 
   // SUBMIT SCORE (FIXED)
+  console.log("SUBMIT CLICKED");
+alert("Submit clicked");
   const submit = async () => {
     try {
       if (!eventName) return alert("No event started");
