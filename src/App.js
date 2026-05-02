@@ -33,24 +33,15 @@ export default function App(){
   const [top150,setTop150] = useState([]);
 
   const [car,setCar] = useState("");
-  const [driver,setDriver] = useState("");
-  const [rego,setRego] = useState("");
-  const [carName,setCarName] = useState("");
-
-  const [gender,setGender] = useState("");
-  const [carClass,setCarClass] = useState("");
-
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
 
-  // SAFE LOAD
   useEffect(()=>{
     async function load(){
       try{
         const q = await getDocs(collection(db,"scores"));
         setData(q.docs.map(d=>d.data()));
-      }catch(err){
-        console.log("Load error:", err);
+      }catch{
         setData([]);
       }
     }
@@ -66,61 +57,24 @@ export default function App(){
   }
 
   async function submit(){
+    let total = Object.values(scores).reduce((a,b)=>a+b,0);
+    let deductionCount = Object.values(deductions).filter(Boolean).length;
+    let finalScore = total - (deductionCount * 10);
 
-    if(!car) return alert("Enter car");
-    if(Object.keys(scores).length < categories.length){
-      return alert("Complete all scores");
-    }
+    await addDoc(collection(db,"scores"), {
+      judge, car, finalScore, createdAt:new Date()
+    });
 
-    try {
-      const q = query(
-        collection(db,"scores"),
-        where("judge","==",judge),
-        where("car","==",car)
-      );
-
-      const existing = await getDocs(q);
-      if(!existing.empty){
-        return alert("Already scored this car");
-      }
-
-      let total = Object.values(scores).reduce((a,b)=>a+b,0);
-      let deductionCount = Object.values(deductions).filter(Boolean).length;
-      let finalScore = total - (deductionCount * 10);
-
-      const payload = {
-        judge, car, driver, rego, carName,
-        gender, carClass,
-        finalScore,
-        createdAt: new Date()
-      };
-
-      await addDoc(collection(db,"scores"), payload);
-      setData(prev => [...prev, payload]);
-
-      // RESET
-      setScores({});
-      setDeductions({});
-      setCar("");
-      setDriver("");
-      setRego("");
-      setCarName("");
-      setGender("");
-      setCarClass("");
-
-    } catch(err){
-      console.log(err);
-      alert("Save failed");
-    }
+    setScores({});
+    setDeductions({});
+    setCar("");
   }
 
   function combineScores(){
     let combined = {};
-    (data || []).forEach(e=>{
-      let key = e.car || "Unknown";
-      if(!combined[key]){
-        combined[key] = { car:e.car, total:0 };
-      }
+    data.forEach(e=>{
+      let key = e.car;
+      if(!combined[key]) combined[key] = { car:e.car,total:0 };
       combined[key].total += e.finalScore;
     });
     return Object.values(combined);
@@ -128,32 +82,35 @@ export default function App(){
 
   function buildTop150(){
     setTop150(
-      combineScores()
-        .sort((a,b)=>b.total-a.total)
-        .slice(0,150)
+      combineScores().sort((a,b)=>b.total-a.total).slice(0,150)
     );
-    setScreen("top150");
+    setScreen("leaderboard");
   }
 
-  // HOME
+  const btnStyle = {
+    width:"100%",
+    padding:"18px",
+    margin:"10px 0",
+    fontSize:"18px",
+    background:"#1e1e1e",
+    color:"#fff",
+    border:"1px solid #444",
+    borderRadius:"6px"
+  };
+
+  // HOME SCREEN (MATCH YOUR OLD ONE)
   if(screen === "home"){
     return (
-      <div style={{padding:20}}>
-        <h1>🔥 AutoFest 🔥</h1>
-        <button onClick={()=>setScreen("event")}>Enter Event</button>
-        <button onClick={buildTop150}>Leaderboards</button>
-      </div>
-    );
-  }
+      <div style={{padding:20,background:"#111",minHeight:"100vh",color:"#fff"}}>
+        <h1 style={{textAlign:"center"}}>🔥 AUTOFEST LIVE SYNC 🔥</h1>
 
-  // EVENT LOGIN
-  if(screen === "event"){
-    return (
-      <div style={{padding:20}}>
-        <h2>Event Login</h2>
-        <button onClick={()=>setScreen("judge")}>
-          Unlock Event
-        </button>
+        <button style={btnStyle} onClick={()=>setScreen("event")}>New Event</button>
+        <button style={btnStyle} onClick={()=>setScreen("judge")}>Judge Login</button>
+        <button style={btnStyle}>Resume Scoring</button>
+        <button style={btnStyle} onClick={buildTop150}>Leaderboard</button>
+        <button style={btnStyle}>Event Archive</button>
+        <button style={btnStyle}>Set Admin</button>
+        <button style={btnStyle}>Admin Login</button>
       </div>
     );
   }
@@ -161,13 +118,10 @@ export default function App(){
   // JUDGE LOGIN
   if(screen === "judge"){
     return (
-      <div style={{padding:20}}>
+      <div style={{padding:20,background:"#111",minHeight:"100vh",color:"#fff"}}>
         <h2>Select Judge</h2>
         {[1,2,3,4,5,6].map(j=>(
-          <button key={j} onClick={()=>{
-            setJudge(j);
-            setScreen("score");
-          }}>
+          <button key={j} style={btnStyle} onClick={()=>{setJudge(j);setScreen("score");}}>
             Judge {j}
           </button>
         ))}
@@ -175,61 +129,74 @@ export default function App(){
     );
   }
 
-  // TOP 150
-  if(screen === "top150"){
+  // LEADERBOARD
+  if(screen === "leaderboard"){
     return (
-      <div style={{padding:20}}>
-        <h2>Top 150</h2>
+      <div style={{padding:20,background:"#111",minHeight:"100vh",color:"#fff"}}>
+        <h2>Leaderboard</h2>
         {top150.map((e,i)=>(
-          <div key={i}>
-            #{i+1} {e.car} - {e.total}
-          </div>
+          <div key={i}>#{i+1} {e.car} - {e.total}</div>
         ))}
-        <button onClick={()=>setScreen("home")}>Home</button>
+        <button style={btnStyle} onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
   }
 
-  // SCORE
+  // SCORE SHEET (MATCH YOUR LOOK)
   return (
-    <div style={{padding:20}}>
+    <div style={{padding:20,background:"#111",minHeight:"100vh",color:"#fff"}}>
 
       <h2>Judge {judge}</h2>
 
-      <input placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)} />
-      <input placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)} />
-      <input placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)} />
-      <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} />
-
-      <div>
-        <button onClick={()=>setGender("Male")}>Male</button>
-        <button onClick={()=>setGender("Female")}>Female</button>
-      </div>
-
-      <div>
-        {classes.map(c=>(
-          <button key={c} onClick={()=>setCarClass(c)}>{c}</button>
-        ))}
-      </div>
+      <input
+        placeholder="Car #"
+        value={car}
+        onChange={e=>setCar(e.target.value)}
+        style={{padding:10,width:"100%",marginBottom:10}}
+      />
 
       {categories.map(cat=>(
         <div key={cat}>
-          <strong>{cat}</strong><br/>
-          {Array.from({length:21},(_,i)=>(
-            <button key={i} onClick={()=>setScore(cat,i)}>{i}</button>
-          ))}
+          <strong>{cat}</strong>
+          <div style={{display:"flex",flexWrap:"wrap"}}>
+            {[...Array(21)].map((_,i)=>(
+              <button
+                key={i}
+                onClick={()=>setScore(cat,i)}
+                style={{
+                  width:40,
+                  height:40,
+                  margin:3,
+                  background: scores[cat]===i ? "red" : "#333",
+                  color:"#fff"
+                }}
+              >
+                {i}
+              </button>
+            ))}
+          </div>
         </div>
       ))}
 
       <div>
+        <strong>Deductions</strong>
         {deductionsList.map(d=>(
-          <button key={d} onClick={()=>toggleDeduction(d)}>{d}</button>
+          <button
+            key={d}
+            onClick={()=>toggleDeduction(d)}
+            style={{
+              margin:5,
+              background: deductions[d] ? "red" : "#333",
+              color:"#fff"
+            }}
+          >
+            {d}
+          </button>
         ))}
       </div>
 
-      <button onClick={submit}>Submit</button>
-      <button onClick={buildTop150}>Leaderboards</button>
-      <button onClick={()=>setScreen("home")}>Home</button>
+      <button style={btnStyle} onClick={submit}>Submit Score</button>
+      <button style={btnStyle} onClick={()=>setScreen("home")}>Home</button>
 
     </div>
   );
