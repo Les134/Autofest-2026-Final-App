@@ -46,14 +46,20 @@ export default function App(){
   const [deductions,setDeductions] = useState({});
   const [data,setData] = useState([]);
 
+  // 🔥 LIVE DATA LOAD
   useEffect(()=>{
     if(!eventName) return;
+
     async function load(){
       const q = query(collection(db,"scores"), where("event","==",eventName));
       const res = await getDocs(q);
       setData(res.docs.map(d=>d.data()));
     }
+
     load();
+    const interval = setInterval(load, 2000); // refresh every 2 sec
+
+    return () => clearInterval(interval);
   },[eventName]);
 
   function setScore(cat,val){
@@ -80,7 +86,6 @@ export default function App(){
       finalScore
     });
 
-    // RESET FOR NEXT CAR
     setScores({});
     setDeductions({});
     setCar("");
@@ -89,8 +94,10 @@ export default function App(){
     setTyres("");
   }
 
+  // 🔥 COMBINED SCORES
   function combineScores(){
     let combined = {};
+
     data.forEach(e=>{
       if(!combined[e.car]){
         combined[e.car] = {
@@ -102,8 +109,17 @@ export default function App(){
       }
       combined[e.car].total += e.finalScore;
     });
+
     return Object.values(combined).sort((a,b)=>b.total-a.total);
   }
+
+  const overall = combineScores();
+  const female = overall.filter(e=>e.gender==="Female");
+
+  const classBoards = {};
+  classes.forEach(c=>{
+    classBoards[c] = overall.filter(e=>e.class===c);
+  });
 
   const row = {
     display:"flex",
@@ -116,10 +132,8 @@ export default function App(){
   const btn = {
     minWidth:"60px",
     height:"60px",
-    fontSize:"16px",
     background:"#333",
-    color:"#fff",
-    border:"none"
+    color:"#fff"
   };
 
   const activeBtn = (active)=>({
@@ -146,14 +160,13 @@ export default function App(){
           placeholder="Event Name"
           value={eventName}
           onChange={e=>setEventName(e.target.value)}
-          style={{width:"100%",padding:12,marginBottom:10}}
+          style={{width:"100%",padding:12}}
         />
 
         <button style={menuBtn} onClick={()=>setScreen("eventSetup")}>Event Setup</button>
         <button style={menuBtn} onClick={()=>setScreen("judgeLogin")}>Judge Login</button>
         <button style={menuBtn} onClick={()=>setScreen("score")}>Return to Scoresheet</button>
         <button style={menuBtn} onClick={()=>setScreen("leaderboard")}>Leaderboards</button>
-        <button style={menuBtn}>Archive (Admin)</button>
       </div>
     );
   }
@@ -174,7 +187,7 @@ export default function App(){
               copy[i]=e.target.value;
               setJudgeNames(copy);
             }}
-            style={{width:"100%",padding:10,marginBottom:5}}
+            style={{width:"100%",padding:10}}
           />
         ))}
 
@@ -194,7 +207,6 @@ export default function App(){
       return (
         <div style={{padding:20}}>
           <h2>No Event Setup</h2>
-          <button style={menuBtn} onClick={()=>setScreen("eventSetup")}>Setup Event</button>
         </div>
       );
     }
@@ -218,21 +230,32 @@ export default function App(){
     );
   }
 
-  // ================= LEADERBOARD =================
+  // ================= LEADERBOARDS =================
   if(screen==="leaderboard"){
-    const list = combineScores();
-
     return (
       <div style={{padding:20}}>
-        <h2>Leaderboard</h2>
 
-        {list.map((e,i)=>(
-          <div key={i}>
-            #{i+1} {e.car} - {e.total}
+        <h2>🏆 Overall</h2>
+        {overall.map((e,i)=>(
+          <div key={i}>#{i+1} {e.car} - {e.total}</div>
+        ))}
+
+        <h2>👩 Female</h2>
+        {female.map((e,i)=>(
+          <div key={i}>#{i+1} {e.car} - {e.total}</div>
+        ))}
+
+        {classes.map(c=>(
+          <div key={c}>
+            <h2>{c}</h2>
+            {classBoards[c].map((e,i)=>(
+              <div key={i}>#{i+1} {e.car} - {e.total}</div>
+            ))}
           </div>
         ))}
 
         <button style={menuBtn} onClick={()=>setScreen("home")}>Home</button>
+
       </div>
     );
   }
@@ -244,7 +267,6 @@ export default function App(){
       <h2>{eventName}</h2>
       <h3>{judge}</h3>
 
-      {/* ENTRANT */}
       <input
         placeholder="Entrant No / Rego"
         value={car}
@@ -252,13 +274,11 @@ export default function App(){
         style={{width:"100%",padding:16,fontSize:20}}
       />
 
-      {/* GENDER */}
       <div style={row}>
         <button style={activeBtn(gender==="Male")} onClick={()=>setGender("Male")}>Male</button>
         <button style={activeBtn(gender==="Female")} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
-      {/* CLASS */}
       <div style={row}>
         {classes.map(c=>(
           <button key={c} style={activeBtn(carClass===c)} onClick={()=>setCarClass(c)}>
@@ -267,17 +287,12 @@ export default function App(){
         ))}
       </div>
 
-      {/* SCORES */}
       {categories.map(cat=>(
         <div key={cat}>
           <div>{cat}</div>
           <div style={row}>
             {[...Array(21)].map((_,i)=>(
-              <button
-                key={i}
-                style={activeBtn(scores[cat]===i)}
-                onClick={()=>setScore(cat,i)}
-              >
+              <button key={i} style={activeBtn(scores[cat]===i)} onClick={()=>setScore(cat,i)}>
                 {i}
               </button>
             ))}
@@ -285,13 +300,11 @@ export default function App(){
         </div>
       ))}
 
-      {/* TYRES */}
       <div style={row}>
         <button style={activeBtn(tyres==="Left")} onClick={()=>setTyres("Left")}>Left</button>
         <button style={activeBtn(tyres==="Right")} onClick={()=>setTyres("Right")}>Right</button>
       </div>
 
-      {/* DEDUCTIONS */}
       <div style={row}>
         {deductionsList.map(d=>(
           <button key={d} style={activeBtn(deductions[d])} onClick={()=>toggleDeduction(d)}>
