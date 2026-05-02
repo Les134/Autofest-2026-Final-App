@@ -45,6 +45,7 @@ export default function App(){
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
   const [data,setData] = useState([]);
+  const [locked,setLocked] = useState(false); // 🔒 NEW
 
   // 🔥 LIVE DATA LOAD
   useEffect(()=>{
@@ -57,25 +58,68 @@ export default function App(){
     }
 
     load();
-    const interval = setInterval(load, 2000); // refresh every 2 sec
+    const interval = setInterval(load, 2000);
 
     return () => clearInterval(interval);
   },[eventName]);
 
+  // 🔒 CHECK IF ALREADY SCORED
+  useEffect(()=>{
+    if(!car || !judge || !eventName) return;
+
+    async function check(){
+      const q = query(
+        collection(db,"scores"),
+        where("event","==",eventName),
+        where("car","==",car),
+        where("judge","==",judge)
+      );
+
+      const res = await getDocs(q);
+      setLocked(!res.empty);
+    }
+
+    check();
+  },[car,judge,eventName]);
+
   function setScore(cat,val){
+    if(locked) return;
     setScores(prev => ({ ...prev, [cat]: val }));
   }
 
   function toggleDeduction(d){
+    if(locked) return;
     setDeductions(prev => ({ ...prev, [d]: !prev[d] }));
   }
 
   async function submit(){
+
+    if(locked){
+      alert("Already scored - cannot submit again");
+      return;
+    }
+
     let total = Object.values(scores).reduce((a,b)=>a+b,0);
     let deductionCount = Object.values(deductions).filter(Boolean).length;
     let tyreBonus = tyres ? 5 : 0;
 
     let finalScore = total - (deductionCount * 10) + tyreBonus;
+
+    // 🔒 FINAL DUPLICATE CHECK BEFORE SAVE
+    const q = query(
+      collection(db,"scores"),
+      where("event","==",eventName),
+      where("car","==",car),
+      where("judge","==",judge)
+    );
+
+    const res = await getDocs(q);
+
+    if(!res.empty){
+      alert("Score already exists for this judge & entrant");
+      setLocked(true);
+      return;
+    }
 
     await addDoc(collection(db,"scores"), {
       event:eventName,
@@ -83,7 +127,8 @@ export default function App(){
       car,
       gender,
       carClass,
-      finalScore
+      finalScore,
+      locked:true // 🔒 NEW
     });
 
     setScores({});
@@ -92,6 +137,7 @@ export default function App(){
     setGender("");
     setCarClass("");
     setTyres("");
+    setLocked(false);
   }
 
   // 🔥 COMBINED SCORES
@@ -138,7 +184,8 @@ export default function App(){
 
   const activeBtn = (active)=>({
     ...btn,
-    background: active ? "red" : "#333"
+    background: active ? "red" : "#333",
+    opacity: locked ? 0.5 : 1 // 🔒 VISUAL LOCK
   });
 
   const menuBtn = {
@@ -275,13 +322,13 @@ export default function App(){
       />
 
       <div style={row}>
-        <button style={activeBtn(gender==="Male")} onClick={()=>setGender("Male")}>Male</button>
-        <button style={activeBtn(gender==="Female")} onClick={()=>setGender("Female")}>Female</button>
+        <button disabled={locked} style={activeBtn(gender==="Male")} onClick={()=>setGender("Male")}>Male</button>
+        <button disabled={locked} style={activeBtn(gender==="Female")} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
       <div style={row}>
         {classes.map(c=>(
-          <button key={c} style={activeBtn(carClass===c)} onClick={()=>setCarClass(c)}>
+          <button key={c} disabled={locked} style={activeBtn(carClass===c)} onClick={()=>setCarClass(c)}>
             {c}
           </button>
         ))}
@@ -292,7 +339,12 @@ export default function App(){
           <div>{cat}</div>
           <div style={row}>
             {[...Array(21)].map((_,i)=>(
-              <button key={i} style={activeBtn(scores[cat]===i)} onClick={()=>setScore(cat,i)}>
+              <button
+                key={i}
+                disabled={locked}
+                style={activeBtn(scores[cat]===i)}
+                onClick={()=>setScore(cat,i)}
+              >
                 {i}
               </button>
             ))}
@@ -301,19 +353,22 @@ export default function App(){
       ))}
 
       <div style={row}>
-        <button style={activeBtn(tyres==="Left")} onClick={()=>setTyres("Left")}>Left</button>
-        <button style={activeBtn(tyres==="Right")} onClick={()=>setTyres("Right")}>Right</button>
+        <button disabled={locked} style={activeBtn(tyres==="Left")} onClick={()=>setTyres("Left")}>Left</button>
+        <button disabled={locked} style={activeBtn(tyres==="Right")} onClick={()=>setTyres("Right")}>Right</button>
       </div>
 
       <div style={row}>
         {deductionsList.map(d=>(
-          <button key={d} style={activeBtn(deductions[d])} onClick={()=>toggleDeduction(d)}>
+          <button key={d} disabled={locked} style={activeBtn(deductions[d])} onClick={()=>toggleDeduction(d)}>
             {d}
           </button>
         ))}
       </div>
 
-      <button style={menuBtn} onClick={submit}>Submit</button>
+      <button style={menuBtn} onClick={submit} disabled={locked}>Submit</button>
+
+      {locked && <div style={{color:"red",marginTop:10}}>Score already submitted</div>}
+
       <button style={menuBtn} onClick={()=>setScreen("home")}>Home</button>
 
     </div>
