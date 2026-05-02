@@ -1,4 +1,4 @@
-impoot React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -28,7 +28,6 @@ export default function App(){
 
   const [screen,setScreen] = useState("home");
   const [judge,setJudge] = useState("");
-  const [eventUnlocked,setEventUnlocked] = useState(false);
 
   const [data,setData] = useState([]);
   const [top150,setTop150] = useState([]);
@@ -44,14 +43,14 @@ export default function App(){
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
 
-  // LOAD DATA SAFELY
+  // SAFE LOAD
   useEffect(()=>{
     async function load(){
       try{
         const q = await getDocs(collection(db,"scores"));
         setData(q.docs.map(d=>d.data()));
       }catch(err){
-        console.log(err);
+        console.log("Load error:", err);
         setData([]);
       }
     }
@@ -73,40 +72,46 @@ export default function App(){
       return alert("Complete all scores");
     }
 
-    const q = query(
-      collection(db,"scores"),
-      where("judge","==",judge),
-      where("car","==",car)
-    );
+    try {
+      const q = query(
+        collection(db,"scores"),
+        where("judge","==",judge),
+        where("car","==",car)
+      );
 
-    const existing = await getDocs(q);
-    if(!existing.empty){
-      return alert("Already scored this car");
+      const existing = await getDocs(q);
+      if(!existing.empty){
+        return alert("Already scored this car");
+      }
+
+      let total = Object.values(scores).reduce((a,b)=>a+b,0);
+      let deductionCount = Object.values(deductions).filter(Boolean).length;
+      let finalScore = total - (deductionCount * 10);
+
+      const payload = {
+        judge, car, driver, rego, carName,
+        gender, carClass,
+        finalScore,
+        createdAt: new Date()
+      };
+
+      await addDoc(collection(db,"scores"), payload);
+      setData(prev => [...prev, payload]);
+
+      // RESET
+      setScores({});
+      setDeductions({});
+      setCar("");
+      setDriver("");
+      setRego("");
+      setCarName("");
+      setGender("");
+      setCarClass("");
+
+    } catch(err){
+      console.log(err);
+      alert("Save failed");
     }
-
-    let total = Object.values(scores).reduce((a,b)=>a+b,0);
-    let deductionCount = Object.values(deductions).filter(Boolean).length;
-    let finalScore = total - (deductionCount * 10);
-
-    const payload = {
-      judge, car, driver, rego, carName,
-      gender, carClass,
-      finalScore,
-      createdAt: new Date()
-    };
-
-    await addDoc(collection(db,"scores"), payload);
-    setData(prev => [...prev, payload]);
-
-    // RESET
-    setScores({});
-    setDeductions({});
-    setCar("");
-    setDriver("");
-    setRego("");
-    setCarName("");
-    setGender("");
-    setCarClass("");
   }
 
   function combineScores(){
@@ -114,12 +119,7 @@ export default function App(){
     (data || []).forEach(e=>{
       let key = e.car || "Unknown";
       if(!combined[key]){
-        combined[key] = {
-          car:e.car,
-          total:0,
-          carClass:e.carClass,
-          gender:e.gender
-        };
+        combined[key] = { car:e.car, total:0 };
       }
       combined[key].total += e.finalScore;
     });
@@ -134,8 +134,6 @@ export default function App(){
     );
     setScreen("top150");
   }
-
-  // ================= SCREENS =================
 
   // HOME
   if(screen === "home"){
@@ -153,10 +151,7 @@ export default function App(){
     return (
       <div style={{padding:20}}>
         <h2>Event Login</h2>
-        <button onClick={()=>{
-          setEventUnlocked(true);
-          setScreen("judge");
-        }}>
+        <button onClick={()=>setScreen("judge")}>
           Unlock Event
         </button>
       </div>
@@ -195,7 +190,7 @@ export default function App(){
     );
   }
 
-  // SCORE SCREEN
+  // SCORE
   return (
     <div style={{padding:20}}>
 
@@ -239,4 +234,3 @@ export default function App(){
     </div>
   );
 }
- 
