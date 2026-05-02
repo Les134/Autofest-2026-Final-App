@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+impoot React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
