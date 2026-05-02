@@ -15,8 +15,7 @@ const classes = [
   "V8 N/A",
   "6 Cyl Pro",
   "6 Cyl N/A",
-  "4 Cyl / Rotary",
-  "Female"
+  "4 Cyl / Rotary"
 ];
 
 const categories = [
@@ -69,7 +68,6 @@ export default function App() {
 
   const [entries, setEntries] = useState([]);
 
-  // ================= LIVE DATA =================
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "scores"), snap => {
       setEntries(snap.docs.map(d => d.data()));
@@ -77,7 +75,6 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // ================= LOAD EVENT LOCK =================
   const loadEvent = async name => {
     if (!name) return;
     const ref = doc(db, "events", name);
@@ -90,7 +87,6 @@ export default function App() {
     }
   };
 
-  // ================= LOCK EVENT =================
   const lockEvent = async () => {
     if (!eventName) return alert("Enter Event Name first");
 
@@ -102,7 +98,7 @@ export default function App() {
     setEventLocked(true);
   };
 
-  // ================= SCORE SCREEN =================
+  // ================= SCORE =================
   function ScoreScreen() {
     const [car, setCar] = useState("");
     const [gender, setGender] = useState("");
@@ -136,7 +132,6 @@ export default function App() {
         createdAt: new Date()
       });
 
-      // RESET
       setCar("");
       setGender("");
       setCarClass("");
@@ -147,19 +142,15 @@ export default function App() {
 
     return (
       <div style={page}>
-        <h2>
-          {eventName} {eventLocked && "🔒"}
-        </h2>
+        <h2>{eventName}</h2>
         <h3>{judgeName}</h3>
 
         <input
           placeholder="Car # / Rego"
           value={car}
           onChange={e => setCar(e.target.value)}
-          style={{ width: "100%", padding: 12, marginBottom: 10 }}
         />
 
-        {/* Gender */}
         <div>
           <button
             style={gender === "Male" ? active : smallBtn}
@@ -175,7 +166,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* Classes */}
         <div>
           {classes.map(c => (
             <button
@@ -188,7 +178,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* Scores */}
         {categories.map(cat => (
           <div key={cat}>
             <b>{cat}</b>
@@ -210,46 +199,9 @@ export default function App() {
           </div>
         ))}
 
-        {/* Tyres */}
-        <div>
-          Tyres (+5)
-          <button
-            style={tyres.left ? active : smallBtn}
-            onClick={() => setTyres({ ...tyres, left: !tyres.left })}
-          >
-            L
-          </button>
-          <button
-            style={tyres.right ? active : smallBtn}
-            onClick={() => setTyres({ ...tyres, right: !tyres.right })}
-          >
-            R
-          </button>
-        </div>
-
-        {/* Deductions */}
-        <div>
-          Deductions (-10)
-          {deductionsList.map(d => (
-            <button
-              key={d}
-              style={deductions[d] ? active : smallBtn}
-              onClick={() =>
-                setDeductions(prev => ({
-                  ...prev,
-                  [d]: !prev[d]
-                }))
-              }
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-
         <button style={bigBtn} onClick={submit}>
           Submit
         </button>
-
         <button style={bigBtn} onClick={() => setScreen("home")}>
           Home
         </button>
@@ -273,6 +225,7 @@ export default function App() {
       list = list.sort((a, b) => b.total - a.total).slice(0, 30);
     }
 
+    // CLASS VIEW (includes both genders now)
     if (type === "class") {
       return (
         <div style={page}>
@@ -302,6 +255,7 @@ export default function App() {
       );
     }
 
+    // OVERALL (includes both genders)
     return (
       <div style={page}>
         {list
@@ -364,8 +318,6 @@ export default function App() {
   if (screen === "judge") {
     return (
       <div style={page}>
-        <h2>Event Login</h2>
-
         <input
           placeholder="Event Name"
           value={eventName}
