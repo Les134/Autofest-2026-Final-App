@@ -9,23 +9,24 @@ const categories = [
   "Driver Skill"
 ];
 
-function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard }) {
+// ================= SCORE SCREEN =================
+function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard, onReset }) {
   const [car, setCar] = useState("");
   const [scores, setScores] = useState({});
-  const [saving, setSaving] = useState(false); // 🔥 KEY FIX
+  const [saving, setSaving] = useState(false);
 
   const btn = { padding: 10, margin: 5 };
   const active = { ...btn, background: "red", color: "#fff" };
 
   const submit = async () => {
 
-    if (saving) return; // 🔥 BLOCK DOUBLE CLICK
+    if (saving) return;
 
     if (!eventName) return alert("No event started");
     if (!activeJudge) return alert("No judge selected");
     if (!car) return alert("Enter Car #");
 
-    setSaving(true); // 🔥 LOCK BUTTON
+    setSaving(true);
 
     const total = Object.values(scores).reduce((a, b) => a + b, 0);
 
@@ -38,16 +39,14 @@ function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard }) {
         createdAt: new Date()
       });
 
-      // 🔥 RESET IMMEDIATELY
-      setCar("");
-      setScores({});
+      // 🔥 THIS FORCES A BRAND NEW CLEAN SCORE SCREEN
+      onReset();
 
     } catch (err) {
       console.error(err);
       alert("Error saving");
+      setSaving(false);
     }
-
-    setSaving(false); // 🔥 UNLOCK AFTER COMPLETE
   };
 
   return (
@@ -77,10 +76,7 @@ function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard }) {
 
       <br />
 
-      <button 
-        onClick={submit}
-        disabled={saving} // 🔥 BUTTON DISABLED
-      >
+      <button disabled={saving} onClick={submit}>
         {saving ? "Saving..." : "Submit"}
       </button>
 
@@ -90,6 +86,7 @@ function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard }) {
   );
 }
 
+// ================= MAIN APP =================
 export default function App() {
   const [screen, setScreen] = useState("home");
 
@@ -98,6 +95,9 @@ export default function App() {
   const [activeJudge, setActiveJudge] = useState("");
 
   const [entries, setEntries] = useState([]);
+
+  // 🔥 THIS KEY IS THE SECRET TO RESETTING THE FORM
+  const [scoreKey, setScoreKey] = useState(0);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "scores"), snap => {
@@ -116,6 +116,7 @@ export default function App() {
     setScreen("judge");
   };
 
+  // ================= HOME =================
   if (screen === "home") {
     return (
       <div style={{ padding: 20 }}>
@@ -128,6 +129,7 @@ export default function App() {
     );
   }
 
+  // ================= SETUP =================
   if (screen === "setup") {
     return (
       <div style={{ padding: 20 }}>
@@ -158,6 +160,7 @@ export default function App() {
     );
   }
 
+  // ================= JUDGE =================
   if (screen === "judge") {
     return (
       <div style={{ padding: 20 }}>
@@ -180,17 +183,24 @@ export default function App() {
     );
   }
 
+  // ================= SCORE =================
   if (screen === "score") {
     return (
       <ScoreScreen
+        key={scoreKey}
         eventName={eventName}
         activeJudge={activeJudge}
         onBackHome={() => setScreen("home")}
         onLeaderboard={() => setScreen("leader")}
+        onReset={() => {
+          // 🔥 THIS CREATES A BRAND NEW CLEAN FORM
+          setScoreKey(prev => prev + 1);
+        }}
       />
     );
   }
 
+  // ================= LEADERBOARD =================
   if (screen === "leader") {
     return (
       <div style={{ padding: 20 }}>
