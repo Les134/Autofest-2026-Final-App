@@ -9,104 +9,80 @@ const categories = [
   "Driver Skill"
 ];
 
-const classes = [
-  "V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl / Rotary"
-];
-
-const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
-
 export default function App(){
 
   const [screen,setScreen] = useState("home");
 
   const [eventName,setEventName] = useState("");
-  const [judges,setJudges] = useState(["","","","","",""]);
+  const [judges,setJudges] = useState(["","",""]);
   const [activeJudge,setActiveJudge] = useState("");
 
   const [entries,setEntries] = useState([]);
 
   const [car,setCar] = useState("");
-  const [name,setName] = useState("");
-  const [rego,setRego] = useState("");
-  const [gender,setGender] = useState("");
-  const [carClass,setCarClass] = useState("");
-
   const [scores,setScores] = useState({});
-  const [deductions,setDeductions] = useState({});
-  const [tyres,setTyres] = useState({left:false,right:false});
 
-  // LIVE DATA
+  // 🔥 LOAD DATA
   useEffect(()=>{
     const unsub = onSnapshot(collection(db,"scores"), snap=>{
-      setEntries(snap.docs.map(d=>d.data()));
+      const data = snap.docs.map(d=>d.data());
+      console.log("LIVE DATA:", data);
+      setEntries(data);
     });
     return ()=>unsub();
   },[]);
 
-  // START EVENT
+  // 🔥 START EVENT
   const startEvent = ()=>{
-    const valid = judges.filter(j=>j.trim() !== "");
     if(!eventName) return alert("Enter event name");
+
+    const valid = judges.filter(j=>j.trim() !== "");
     if(valid.length===0) return alert("Add at least 1 judge");
 
     setJudges(valid);
     setScreen("judge");
   };
 
-  // SUBMIT SCORE (FIXED)
-  console.log("SUBMIT CLICKED");
-alert("Submit clicked");
+  // 🔥 SUBMIT (FORCED DEBUG VERSION)
   const submit = async () => {
+
+    alert("Submit clicked");
+
     try {
-      if (!eventName) return alert("No event started");
-      if (!activeJudge) return alert("No judge selected");
 
-      if (!car && !name && !rego)
-        return alert("Enter Car # OR Name OR Rego");
+      if (!eventName) {
+        alert("No event started");
+        return;
+      }
 
-      const base = Object.values(scores).reduce((a, b) => a + b, 0);
-      const tyreScore = (tyres.left ? 5 : 0) + (tyres.right ? 5 : 0);
-      const activeDeds = Object.keys(deductions).filter(d => deductions[d]);
-      const deductionTotal = activeDeds.length * 10;
+      if (!activeJudge) {
+        alert("No judge selected");
+        return;
+      }
 
-      const total = base + tyreScore - deductionTotal;
+      if (!car) {
+        alert("Enter Car #");
+        return;
+      }
 
-      console.log("Submitting:", {
-        eventName,
-        car,
-        name,
-        rego,
-        total
-      });
+      console.log("WRITING TO FIREBASE...");
 
       await addDoc(collection(db, "scores"), {
         eventName,
         car,
-        name,
-        rego,
-        gender,
-        carClass,
         judge: activeJudge,
-        total,
-        deductions: activeDeds,
+        total: Object.values(scores).reduce((a,b)=>a+b,0),
         createdAt: new Date()
       });
 
-      alert("Saved ✅");
+      alert("Saved to Firebase ✅");
 
-      // RESET
-      setScores({});
-      setDeductions({});
-      setTyres({ left: false, right: false });
       setCar("");
-      setName("");
-      setRego("");
-      setGender("");
-      setCarClass("");
+      setScores({});
 
     } catch (err) {
-      console.error("SAVE ERROR:", err);
-      alert("Error saving — check console (F12)");
+      console.error("FIREBASE ERROR:", err);
+      alert("ERROR — open console (F12)");
     }
   };
 
@@ -117,7 +93,7 @@ alert("Submit clicked");
   if(screen==="home"){
     return(
       <div style={{padding:20}}>
-        <h1>🔥 AUTOFEST LIVE SYNC 🔥</h1>
+        <h1>🔥 AUTOFEST 🔥</h1>
 
         <button onClick={()=>setScreen("setup")}>New Event</button>
         <button onClick={()=>setScreen("judge")}>Judge Login</button>
@@ -132,7 +108,8 @@ alert("Submit clicked");
       <div style={{padding:20}}>
         <h2>Event Setup</h2>
 
-        <input placeholder="Event Name"
+        <input
+          placeholder="Event Name"
           value={eventName}
           onChange={(e)=>setEventName(e.target.value)}
         />
@@ -149,6 +126,8 @@ alert("Submit clicked");
           />
         ))}
 
+        <br/><br/>
+
         <button onClick={startEvent}>Start Event</button>
         <button onClick={()=>setScreen("home")}>Back</button>
       </div>
@@ -164,9 +143,11 @@ alert("Submit clicked");
         {judges.map((j,i)=>(
           <button key={i}
             onClick={()=>{setActiveJudge(j);setScreen("score")}}>
-            {j}
+            {j || `Judge ${i+1}`}
           </button>
         ))}
+
+        <br/><br/>
 
         <button onClick={()=>setScreen("home")}>Back</button>
       </div>
@@ -179,29 +160,16 @@ alert("Submit clicked");
       <div style={{padding:20}}>
         <h3>{eventName} - {activeJudge}</h3>
 
-        <input placeholder="Car #" value={car} onChange={(e)=>setCar(e.target.value)} />
-        <input placeholder="Name" value={name} onChange={(e)=>setName(e.target.value)} />
-        <input placeholder="Rego" value={rego} onChange={(e)=>setRego(e.target.value)} />
-
-        <div>
-          <button style={gender==="Male"?active:btn} onClick={()=>setGender("Male")}>Male</button>
-          <button style={gender==="Female"?active:btn} onClick={()=>setGender("Female")}>Female</button>
-        </div>
-
-        <div>
-          {classes.map(c=>(
-            <button key={c}
-              style={carClass===c?active:btn}
-              onClick={()=>setCarClass(c)}>
-              {c}
-            </button>
-          ))}
-        </div>
+        <input
+          placeholder="Car #"
+          value={car}
+          onChange={(e)=>setCar(e.target.value)}
+        />
 
         {categories.map(cat=>(
           <div key={cat}>
             <strong>{cat}</strong><br/>
-            {Array.from({length:21},(_,i)=>(
+            {Array.from({length:11},(_,i)=>(
               <button key={i}
                 style={scores[cat]===i?active:btn}
                 onClick={()=>setScores({...scores,[cat]:i})}>
@@ -211,28 +179,7 @@ alert("Submit clicked");
           </div>
         ))}
 
-        <div>
-          <h4>Tyres Blown</h4>
-          <button style={tyres.left?active:btn}
-            onClick={()=>setTyres({...tyres,left:!tyres.left})}>
-            Left
-          </button>
-          <button style={tyres.right?active:btn}
-            onClick={()=>setTyres({...tyres,right:!tyres.right})}>
-            Right
-          </button>
-        </div>
-
-        <div>
-          <h4>Deductions</h4>
-          {deductionsList.map(d=>(
-            <button key={d}
-              style={deductions[d]?active:btn}
-              onClick={()=>setDeductions({...deductions,[d]:!deductions[d]})}>
-              {d}
-            </button>
-          ))}
-        </div>
+        <br/>
 
         <button onClick={submit}>Submit</button>
         <button onClick={()=>setScreen("judge")}>Next Judge</button>
@@ -251,7 +198,7 @@ alert("Submit clicked");
           .sort((a,b)=>b.total-a.total)
           .map((e,i)=>(
             <div key={i}>
-              {e.car} | {e.carClass} | {e.total}
+              {e.car} | {e.total}
             </div>
           ))}
 
