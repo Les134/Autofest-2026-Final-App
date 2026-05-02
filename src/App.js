@@ -3,20 +3,68 @@ import { db } from "./firebase";
 import { collection, addDoc, onSnapshot } from "firebase/firestore";
 
 // ================= CONFIG =================
-const categories = ["Instant Smoke","Volume","Consistency","Driver Skill"];
+const categories = [
+  "Instant Smoke",
+  "Volume of Smoke",
+  "Constant Smoke",
+  "Driver Skill & Control"
+];
 
+const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
+
+// ================= DARK THEME =================
+const container = {
+  background: "#111",
+  color: "#fff",
+  minHeight: "100vh",
+  padding: 20
+};
+
+const row = {
+  marginBottom: 20
+};
+
+const scoreBtn = {
+  background: "#222",
+  color: "#fff",
+  border: "1px solid #555",
+  padding: "10px 12px",
+  margin: "3px",
+  minWidth: "40px",
+  borderRadius: "4px"
+};
+
+const activeScore = {
+  ...scoreBtn,
+  background: "red",
+  color: "#fff",
+  border: "1px solid red"
+};
+
+const wideBtn = {
+  width: "100%",
+  padding: "16px",
+  marginTop: 10,
+  background: "#222",
+  color: "#fff",
+  border: "1px solid #555",
+  fontSize: "16px"
+};
+
+const activeWide = {
+  ...wideBtn,
+  background: "red",
+  border: "1px solid red"
+};
+
+// ================= APP =================
 export default function App(){
 
   const [screen,setScreen] = useState("home");
-
   const [eventName,setEventName] = useState("");
-  const [judges,setJudges] = useState(["","","","","",""]);
   const [activeJudge,setActiveJudge] = useState("");
-  const [eventLocked,setEventLocked] = useState(false);
-
   const [entries,setEntries] = useState([]);
 
-  // 🔥 LIVE DATA
   useEffect(()=>{
     const unsub = onSnapshot(collection(db,"scores"),snap=>{
       setEntries(snap.docs.map(d=>d.data()));
@@ -24,53 +72,67 @@ export default function App(){
     return ()=>unsub();
   },[]);
 
-  // ================= SCORE SCREEN =================
+  // ================= SCORE =================
   function ScoreScreen(){
 
     const [car,setCar] = useState("");
     const [scores,setScores] = useState({});
+    const [tyres,setTyres] = useState({left:false,right:false});
+    const [deductions,setDeductions] = useState({});
     const [saving,setSaving] = useState(false);
 
     const submit = async () => {
 
       if (saving) return;
-
       if (!car) return alert("Enter Car #");
 
       setSaving(true);
 
-      const total = Object.values(scores).reduce((a,b)=>a+b,0);
+      const base = Object.values(scores).reduce((a,b)=>a+b,0);
+      const tyreScore = (tyres.left?5:0)+(tyres.right?5:0);
+      const activeDeds = Object.keys(deductions).filter(d=>deductions[d]);
+      const deductionTotal = activeDeds.length * 10;
+
+      const total = base + tyreScore - deductionTotal;
 
       await addDoc(collection(db,"scores"),{
         eventName,
         car,
         judge: activeJudge,
         total,
+        deductions: activeDeds,
         createdAt: new Date()
       });
 
-      // 🔥 HARD RESET (THIS FIXES YOUR ISSUE)
+      // 🔥 CLEAN RESET (WORKING)
       setCar("");
       setScores({});
+      setTyres({left:false,right:false});
+      setDeductions({});
       setSaving(false);
     };
 
     return(
-      <div style={{padding:20}}>
+      <div style={container}>
+
         <h2>{eventName}</h2>
         <h3>{activeJudge}</h3>
 
         <input
+          style={{width:"100%",padding:12,marginBottom:15}}
           placeholder="Car #"
           value={car}
           onChange={(e)=>setCar(e.target.value)}
         />
 
         {categories.map(cat=>(
-          <div key={cat}>
-            <strong>{cat}</strong><br/>
-            {Array.from({length:11},(_,i)=>(
-              <button key={i}
+          <div key={cat} style={row}>
+            <div>{cat}</div>
+
+            {Array.from({length:21},(_,i)=>(
+              <button
+                key={i}
+                style={scores[cat]===i ? activeScore : scoreBtn}
                 onClick={()=>setScores({...scores,[cat]:i})}
               >
                 {i}
@@ -79,11 +141,48 @@ export default function App(){
           </div>
         ))}
 
-        <button onClick={submit}>
-          {saving ? "Saving..." : "Submit"}
+        {/* TYRES */}
+        <div style={row}>
+          <div>Blown Tyres (+5)</div>
+
+          <button
+            style={tyres.left ? activeWide : wideBtn}
+            onClick={()=>setTyres({...tyres,left:!tyres.left})}
+          >
+            Left
+          </button>
+
+          <button
+            style={tyres.right ? activeWide : wideBtn}
+            onClick={()=>setTyres({...tyres,right:!tyres.right})}
+          >
+            Right
+          </button>
+        </div>
+
+        {/* DEDUCTIONS */}
+        <div style={row}>
+          <div>Deductions (-10)</div>
+
+          {deductionsList.map(d=>(
+            <button
+              key={d}
+              style={deductions[d] ? activeWide : wideBtn}
+              onClick={()=>setDeductions({...deductions,[d]:!deductions[d]})}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+
+        <button style={wideBtn} onClick={submit}>
+          {saving ? "Saving..." : "Submit Score"}
         </button>
 
-        <button onClick={()=>setScreen("home")}>Home</button>
+        <button style={wideBtn} onClick={()=>setScreen("home")}>
+          Home
+        </button>
+
       </div>
     );
   }
@@ -91,75 +190,16 @@ export default function App(){
   // ================= HOME =================
   if(screen==="home"){
     return(
-      <div style={{padding:20}}>
+      <div style={container}>
         <h1>🔥 AUTOFEST LIVE SYNC 🔥</h1>
 
-        <button onClick={()=>setScreen("admin")}>New Event</button>
-        <button onClick={()=>setScreen("judgeLogin")}>Judge Login</button>
-        <button onClick={()=>setScreen("leader")}>Leaderboard</button>
-        <button>Class Leaderboard</button>
-        <button>Female Overall</button>
-        <button>Top 150</button>
-        <button>Top 30 Finals</button>
-        <button>Archived Events</button>
-      </div>
-    );
-  }
-
-  // ================= ADMIN SETUP =================
-  if(screen==="admin"){
-    return(
-      <div style={{padding:20}}>
-        <h2>Admin Setup</h2>
-
-        <input
-          placeholder="Event Name"
-          value={eventName}
-          onChange={(e)=>setEventName(e.target.value)}
-        />
-
-        {judges.map((j,i)=>(
-          <input key={i}
-            placeholder={`Judge ${i+1}`}
-            value={judges[i]}
-            onChange={(e)=>{
-              const copy=[...judges];
-              copy[i]=e.target.value;
-              setJudges(copy);
-            }}
-          />
-        ))}
-
-        <button onClick={()=>{
-          if(!eventName) return alert("Add event");
-          setEventLocked(true);
-          setScreen("home");
-        }}>
-          LOCK EVENT
+        <button style={wideBtn} onClick={()=>setScreen("score")}>
+          Start Scoring
         </button>
 
-        <button onClick={()=>setScreen("home")}>Back</button>
-      </div>
-    );
-  }
-
-  // ================= JUDGE LOGIN =================
-  if(screen==="judgeLogin"){
-    return(
-      <div style={{padding:20}}>
-        <h2>Judge Login</h2>
-
-        {judges.filter(j=>j).map((j,i)=>(
-          <button key={i}
-            onClick={()=>{
-              setActiveJudge(j);
-              setScreen("score");
-            }}>
-            {j}
-          </button>
-        ))}
-
-        <button onClick={()=>setScreen("home")}>Back</button>
+        <button style={wideBtn} onClick={()=>setScreen("leader")}>
+          Leaderboard
+        </button>
       </div>
     );
   }
@@ -172,7 +212,7 @@ export default function App(){
   // ================= LEADERBOARD =================
   if(screen==="leader"){
     return(
-      <div style={{padding:20}}>
+      <div style={container}>
         <h2>Leaderboard</h2>
 
         {entries
@@ -184,10 +224,12 @@ export default function App(){
             </div>
           ))}
 
-        <button onClick={()=>setScreen("home")}>Back</button>
+        <button style={wideBtn} onClick={()=>setScreen("home")}>
+          Back
+        </button>
       </div>
     );
   }
 
-  return <div>Loading...</div>;
+  return <div style={container}>Loading...</div>;
 }
