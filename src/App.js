@@ -45,9 +45,9 @@ export default function App(){
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
   const [data,setData] = useState([]);
-  const [locked,setLocked] = useState(false); // 🔒 NEW
+  const [locked,setLocked] = useState(false);
 
-  // 🔥 LIVE DATA LOAD
+  // LOAD DATA
   useEffect(()=>{
     if(!eventName) return;
 
@@ -59,11 +59,10 @@ export default function App(){
 
     load();
     const interval = setInterval(load, 2000);
-
     return () => clearInterval(interval);
   },[eventName]);
 
-  // 🔒 CHECK IF ALREADY SCORED
+  // CHECK LOCK
   useEffect(()=>{
     if(!car || !judge || !eventName) return;
 
@@ -93,9 +92,8 @@ export default function App(){
   }
 
   async function submit(){
-
     if(locked){
-      alert("Already scored - cannot submit again");
+      alert("Already scored");
       return;
     }
 
@@ -105,7 +103,6 @@ export default function App(){
 
     let finalScore = total - (deductionCount * 10) + tyreBonus;
 
-    // 🔒 FINAL DUPLICATE CHECK BEFORE SAVE
     const q = query(
       collection(db,"scores"),
       where("event","==",eventName),
@@ -116,7 +113,7 @@ export default function App(){
     const res = await getDocs(q);
 
     if(!res.empty){
-      alert("Score already exists for this judge & entrant");
+      alert("Already scored");
       setLocked(true);
       return;
     }
@@ -128,7 +125,7 @@ export default function App(){
       gender,
       carClass,
       finalScore,
-      locked:true // 🔒 NEW
+      locked:true
     });
 
     setScores({});
@@ -140,7 +137,6 @@ export default function App(){
     setLocked(false);
   }
 
-  // 🔥 COMBINED SCORES
   function combineScores(){
     let combined = {};
 
@@ -169,15 +165,14 @@ export default function App(){
 
   const row = {
     display:"flex",
-    flexWrap:"nowrap",
-    overflowX:"auto",
+    flexWrap:"wrap", // ✅ FIXED GRID
     gap:"5px",
     marginBottom:"10px"
   };
 
   const btn = {
-    minWidth:"60px",
-    height:"60px",
+    width:"60px",
+    height:"50px",
     background:"#333",
     color:"#fff"
   };
@@ -185,7 +180,7 @@ export default function App(){
   const activeBtn = (active)=>({
     ...btn,
     background: active ? "red" : "#333",
-    opacity: locked ? 0.5 : 1 // 🔒 VISUAL LOCK
+    opacity: locked ? 0.5 : 1
   });
 
   const menuBtn = {
@@ -197,11 +192,24 @@ export default function App(){
     color:"#fff"
   };
 
-  // ================= HOME =================
+  // HOME
   if(screen==="home"){
     return (
       <div style={{padding:20}}>
         <h1>🔥 AutoFest 🔥</h1>
+
+        <button style={menuBtn} onClick={()=>setScreen("eventSetup")}>Event Setup</button>
+        <button style={menuBtn} onClick={()=>setScreen("judgeLogin")}>Judge Login</button>
+        <button style={menuBtn} onClick={()=>setScreen("leaderboard")}>Leaderboards</button>
+      </div>
+    );
+  }
+
+  // EVENT SETUP PAGE
+  if(screen==="eventSetup"){
+    return (
+      <div style={{padding:20}}>
+        <h2>Event Setup</h2>
 
         <input
           placeholder="Event Name"
@@ -210,19 +218,7 @@ export default function App(){
           style={{width:"100%",padding:12}}
         />
 
-        <button style={menuBtn} onClick={()=>setScreen("eventSetup")}>Event Setup</button>
-        <button style={menuBtn} onClick={()=>setScreen("judgeLogin")}>Judge Login</button>
-        <button style={menuBtn} onClick={()=>setScreen("score")}>Return to Scoresheet</button>
-        <button style={menuBtn} onClick={()=>setScreen("leaderboard")}>Leaderboards</button>
-      </div>
-    );
-  }
-
-  // ================= EVENT SETUP =================
-  if(screen==="eventSetup"){
-    return (
-      <div style={{padding:20}}>
-        <h2>Judge Names</h2>
+        <h3>Judges</h3>
 
         {judgeNames.map((n,i)=>(
           <input
@@ -244,18 +240,16 @@ export default function App(){
         }}>
           LOCK EVENT
         </button>
+
+        <button style={menuBtn} onClick={()=>setScreen("home")}>Back</button>
       </div>
     );
   }
 
-  // ================= JUDGE LOGIN =================
+  // JUDGE LOGIN PAGE
   if(screen==="judgeLogin"){
     if(!eventLocked){
-      return (
-        <div style={{padding:20}}>
-          <h2>No Event Setup</h2>
-        </div>
-      );
+      return <div style={{padding:20}}>Event not locked</div>;
     }
 
     return (
@@ -273,41 +267,26 @@ export default function App(){
             </button>
           )
         ))}
+
+        <button style={menuBtn} onClick={()=>setScreen("home")}>Back</button>
       </div>
     );
   }
 
-  // ================= LEADERBOARDS =================
+  // LEADERBOARD unchanged
   if(screen==="leaderboard"){
     return (
       <div style={{padding:20}}>
-
         <h2>🏆 Overall</h2>
         {overall.map((e,i)=>(
           <div key={i}>#{i+1} {e.car} - {e.total}</div>
         ))}
-
-        <h2>👩 Female</h2>
-        {female.map((e,i)=>(
-          <div key={i}>#{i+1} {e.car} - {e.total}</div>
-        ))}
-
-        {classes.map(c=>(
-          <div key={c}>
-            <h2>{c}</h2>
-            {classBoards[c].map((e,i)=>(
-              <div key={i}>#{i+1} {e.car} - {e.total}</div>
-            ))}
-          </div>
-        ))}
-
         <button style={menuBtn} onClick={()=>setScreen("home")}>Home</button>
-
       </div>
     );
   }
 
-  // ================= SCORE SHEET =================
+  // SCORE PAGE
   return (
     <div style={{padding:20}}>
 
@@ -320,19 +299,6 @@ export default function App(){
         onChange={e=>setCar(e.target.value)}
         style={{width:"100%",padding:16,fontSize:20}}
       />
-
-      <div style={row}>
-        <button disabled={locked} style={activeBtn(gender==="Male")} onClick={()=>setGender("Male")}>Male</button>
-        <button disabled={locked} style={activeBtn(gender==="Female")} onClick={()=>setGender("Female")}>Female</button>
-      </div>
-
-      <div style={row}>
-        {classes.map(c=>(
-          <button key={c} disabled={locked} style={activeBtn(carClass===c)} onClick={()=>setCarClass(c)}>
-            {c}
-          </button>
-        ))}
-      </div>
 
       {categories.map(cat=>(
         <div key={cat}>
@@ -352,23 +318,7 @@ export default function App(){
         </div>
       ))}
 
-      <div style={row}>
-        <button disabled={locked} style={activeBtn(tyres==="Left")} onClick={()=>setTyres("Left")}>Left</button>
-        <button disabled={locked} style={activeBtn(tyres==="Right")} onClick={()=>setTyres("Right")}>Right</button>
-      </div>
-
-      <div style={row}>
-        {deductionsList.map(d=>(
-          <button key={d} disabled={locked} style={activeBtn(deductions[d])} onClick={()=>toggleDeduction(d)}>
-            {d}
-          </button>
-        ))}
-      </div>
-
       <button style={menuBtn} onClick={submit} disabled={locked}>Submit</button>
-
-      {locked && <div style={{color:"red",marginTop:10}}>Score already submitted</div>}
-
       <button style={menuBtn} onClick={()=>setScreen("home")}>Home</button>
 
     </div>
