@@ -6,9 +6,7 @@ import {
   addDoc,
   getDocs,
   query,
-  where,
-  setDoc,
-  doc
+  where
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -20,13 +18,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const categories = [
-  "Instant Smoke",
-  "Volume",
-  "Consistency",
-  "Driver Control"
-];
-
+const categories = ["Instant Smoke","Volume","Consistency","Driver Control"];
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl / Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
@@ -48,9 +40,6 @@ export default function App(){
   const [deductions,setDeductions] = useState({});
   const [data,setData] = useState([]);
   const [locked,setLocked] = useState(false);
-
-  const [adminPass,setAdminPass] = useState("");
-  const [adminLogged,setAdminLogged] = useState(false);
 
   // LOAD DATA
   useEffect(()=>{
@@ -138,7 +127,7 @@ export default function App(){
     setTyres("");
   }
 
-  // COMBINE
+  // COMBINE SCORES
   function combineScores(){
     let combined = {};
 
@@ -158,35 +147,12 @@ export default function App(){
   }
 
   const overall = combineScores();
+  const female = overall.filter(e=>e.gender==="Female");
 
-  // PRINT
-  function printPage(){
-    window.print();
-  }
-
-  // ARCHIVE EVENT
-  async function archiveEvent(){
-    if(!eventName) return;
-
-    const archiveRef = doc(db,"archives",eventName);
-    await setDoc(archiveRef,{
-      event:eventName,
-      results:overall,
-      archivedAt:new Date()
-    });
-
-    alert("Event archived safely");
-  }
-
-  // ADMIN LOGIN
-  function adminLogin(){
-    if(adminPass === "admin123"){ // simple local check
-      setAdminLogged(true);
-      setScreen("admin");
-    } else {
-      alert("Wrong password");
-    }
-  }
+  const classBoards = {};
+  classes.forEach(c=>{
+    classBoards[c] = overall.filter(e=>e.class===c);
+  });
 
   const menuBtn = {
     width:"100%",
@@ -205,54 +171,105 @@ export default function App(){
 
         <button style={menuBtn} onClick={()=>setScreen("eventSetup")}>Event Setup</button>
         <button style={menuBtn} onClick={()=>setScreen("judgeLogin")}>Judge Login</button>
-        <button style={menuBtn} onClick={()=>setScreen("score")}>Scoresheet</button>
+        <button style={menuBtn} onClick={()=>setScreen("score")}>Return to Scoresheet</button>
         <button style={menuBtn} onClick={()=>setScreen("leaderboard")}>Leaderboards</button>
-        <button style={menuBtn} onClick={()=>setScreen("adminLogin")}>Admin</button>
       </div>
     );
   }
 
-  // ADMIN LOGIN PAGE
-  if(screen==="adminLogin"){
+  // EVENT SETUP
+  if(screen==="eventSetup"){
     return (
       <div style={{padding:20}}>
-        <h2>Admin Login</h2>
+        <h2>Event Setup</h2>
+
         <input
-          type="password"
-          placeholder="Password"
-          value={adminPass}
-          onChange={e=>setAdminPass(e.target.value)}
+          placeholder="Event Name"
+          value={eventName}
+          onChange={e=>setEventName(e.target.value)}
         />
-        <button style={menuBtn} onClick={adminLogin}>Login</button>
+
+        {judgeNames.map((n,i)=>(
+          <input
+            key={i}
+            placeholder={`Judge ${i+1}`}
+            value={n}
+            onChange={e=>{
+              let copy=[...judgeNames];
+              copy[i]=e.target.value;
+              setJudgeNames(copy);
+            }}
+          />
+        ))}
+
+        <button style={menuBtn} onClick={()=>{
+          setEventLocked(true);
+          setScreen("home");
+        }}>
+          LOCK EVENT
+        </button>
       </div>
     );
   }
 
-  // ADMIN PANEL
-  if(screen==="admin" && adminLogged){
+  // JUDGE LOGIN
+  if(screen==="judgeLogin"){
+    if(!eventLocked){
+      return <div style={{padding:20}}>Event not locked</div>;
+    }
+
     return (
       <div style={{padding:20}}>
-        <h2>Admin Panel</h2>
+        <h2>Select Judge</h2>
 
-        <button style={menuBtn} onClick={archiveEvent}>Archive Event</button>
-        <button style={menuBtn} onClick={printPage}>Print Leaderboards</button>
+        {judgeNames.map((name,i)=>(
+          name && (
+            <button
+              key={i}
+              style={menuBtn}
+              onClick={()=>{setJudge(name);}}
+            >
+              {name}
+            </button>
+          )
+        ))}
 
-        <button style={menuBtn} onClick={()=>setScreen("home")}>Home</button>
+        {judge && (
+          <button style={menuBtn} onClick={()=>setScreen("score")}>
+            Continue to Scoresheet
+          </button>
+        )}
       </div>
     );
   }
 
-  // LEADERBOARD
+  // LEADERBOARD (FULL RESTORED)
   if(screen==="leaderboard"){
     return (
       <div style={{padding:20}}>
+
         <h2>🏆 Overall</h2>
         {overall.map((e,i)=>(
           <div key={i}>#{i+1} {e.car} - {e.total}</div>
         ))}
 
-        <button style={menuBtn} onClick={printPage}>Print</button>
+        <h2>👩 Female</h2>
+        {female.map((e,i)=>(
+          <div key={i}>#{i+1} {e.car} - {e.total}</div>
+        ))}
+
+        {classes.map(c=>(
+          <div key={c}>
+            <h2>{c}</h2>
+            {classBoards[c].map((e,i)=>(
+              <div key={i}>#{i+1} {e.car} - {e.total}</div>
+            ))}
+          </div>
+        ))}
+
+        <button style={menuBtn} onClick={()=>window.print()}>Print</button>
         <button style={menuBtn} onClick={()=>setScreen("home")}>Home</button>
+
       </div>
     );
   }
@@ -260,6 +277,7 @@ export default function App(){
   // SCORE PAGE
   return (
     <div style={{padding:20}}>
+
       <h2>{eventName}</h2>
       <h3>{judge}</h3>
 
@@ -288,6 +306,7 @@ export default function App(){
 
       <button style={menuBtn} onClick={submit}>Submit</button>
       <button style={menuBtn} onClick={()=>setScreen("home")}>Home</button>
+
     </div>
   );
 }
