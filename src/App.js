@@ -41,7 +41,7 @@ export default function App(){
   const [data,setData] = useState([]);
   const [locked,setLocked] = useState(false);
 
-  // 🔧 FIX: Reset judge when opening login
+  // RESET JUDGE WHEN ENTER LOGIN
   useEffect(()=>{
     if(screen==="judgeLogin"){
       setJudge("");
@@ -134,7 +134,6 @@ export default function App(){
     setTyres("");
   }
 
-  // COMBINE
   function combineScores(){
     let combined = {};
     data.forEach(e=>{
@@ -152,18 +151,11 @@ export default function App(){
   }
 
   const overall = combineScores();
-  const female = overall.filter(e=>e.gender==="Female");
-
-  const classBoards = {};
-  classes.forEach(c=>{
-    classBoards[c] = overall.filter(e=>e.class===c);
-  });
 
   const menuBtn = {
     width:"100%",
     padding:"16px",
     margin:"6px 0",
-    fontSize:"18px",
     background:"#222",
     color:"#fff"
   };
@@ -178,37 +170,23 @@ export default function App(){
           placeholder="Event Name"
           value={eventName}
           onChange={e=>!eventLocked && setEventName(e.target.value)}
-          style={{width:"100%",padding:12}}
         />
 
         <button style={menuBtn} onClick={()=>setScreen("eventSetup")}>Event Setup</button>
         <button style={menuBtn} onClick={()=>setScreen("judgeLogin")}>Judge Login</button>
         <button style={menuBtn} onClick={()=>setScreen("score")}>Return to Scoresheet</button>
-        <button style={menuBtn} onClick={()=>setScreen("leaderboard")}>Full Leaderboards</button>
+        <button style={menuBtn} onClick={()=>setScreen("leaderboard")}>Leaderboards</button>
 
-        <h2>🏆 Top 30</h2>
+        <h2>Top 30</h2>
         {overall.slice(0,30).map((e,i)=>(
           <div key={i}>#{i+1} {e.car} - {e.total}</div>
         ))}
-
-        <h3>👩 Female</h3>
-        {female.slice(0,10).map((e,i)=>(
-          <div key={i}>#{i+1} {e.car} - {e.total}</div>
-        ))}
-
-        <button style={menuBtn} onClick={()=>window.print()}>
-          Print Leaderboard
-        </button>
       </div>
     );
   }
 
   // JUDGE LOGIN
   if(screen==="judgeLogin"){
-    if(!eventLocked){
-      return <div style={{padding:20}}>Event not locked</div>;
-    }
-
     return (
       <div style={{padding:20}}>
         <h2>Select Judge</h2>
@@ -223,30 +201,29 @@ export default function App(){
 
         {judge && (
           <button style={menuBtn} onClick={()=>setScreen("score")}>
-            Continue to Scoresheet
+            Continue
           </button>
         )}
       </div>
     );
   }
 
-  // 🔧 FIX: prevent scoring without judge
+  // BLOCK SCORE IF NO JUDGE
   if(screen==="score" && !judge){
     return (
       <div style={{padding:20}}>
         <h2>No Judge Selected</h2>
         <button style={menuBtn} onClick={()=>setScreen("judgeLogin")}>
-          Go to Judge Login
+          Go to Login
         </button>
       </div>
     );
   }
 
-  // LEADERBOARD unchanged...
-
-  // SCORE PAGE (unchanged)
+  // SCORE SHEET (FULL RESTORED)
   return (
     <div style={{padding:20}}>
+
       <h2>{eventName}</h2>
       <h3>{judge}</h3>
 
@@ -256,16 +233,23 @@ export default function App(){
         onChange={e=>setCar(e.target.value)}
       />
 
+      <div>
+        <button onClick={()=>setGender("Male")}>Male</button>
+        <button onClick={()=>setGender("Female")}>Female</button>
+      </div>
+
+      <div>
+        {classes.map(c=>(
+          <button key={c} onClick={()=>setCarClass(c)}>{c}</button>
+        ))}
+      </div>
+
       {categories.map(cat=>(
         <div key={cat}>
           <div>{cat}</div>
           <div style={{display:"flex",flexWrap:"wrap"}}>
             {[...Array(20)].map((_,i)=>(
-              <button
-                key={i}
-                disabled={locked}
-                onClick={()=>setScore(cat,i+1)}
-              >
+              <button key={i} onClick={()=>setScore(cat,i+1)}>
                 {i+1}
               </button>
             ))}
@@ -273,8 +257,20 @@ export default function App(){
         </div>
       ))}
 
+      <div>
+        <button onClick={()=>setTyres("Left")}>Left</button>
+        <button onClick={()=>setTyres("Right")}>Right</button>
+      </div>
+
+      <div>
+        {deductionsList.map(d=>(
+          <button key={d} onClick={()=>toggleDeduction(d)}>{d}</button>
+        ))}
+      </div>
+
       <button style={menuBtn} onClick={submit}>Submit</button>
       <button style={menuBtn} onClick={()=>setScreen("home")}>Home</button>
+
     </div>
   );
 }
