@@ -35,6 +35,7 @@ export default function App(){
   const [deductions,setDeductions] = useState({});
   const [tyres,setTyres] = useState({left:false,right:false});
 
+  // LIVE DATA
   useEffect(()=>{
     const unsub = onSnapshot(collection(db,"scores"), snap=>{
       setEntries(snap.docs.map(d=>d.data()));
@@ -42,6 +43,7 @@ export default function App(){
     return ()=>unsub();
   },[]);
 
+  // START EVENT
   const startEvent = ()=>{
     const valid = judges.filter(j=>j.trim() !== "");
     if(!eventName) return alert("Enter event name");
@@ -51,34 +53,59 @@ export default function App(){
     setScreen("judge");
   };
 
-  const submit = async ()=>{
-    if(!car && !name && !rego)
-      return alert("Enter Car # OR Name OR Rego");
+  // SUBMIT SCORE (FIXED)
+  const submit = async () => {
+    try {
+      if (!eventName) return alert("No event started");
+      if (!activeJudge) return alert("No judge selected");
 
-    const base = Object.values(scores).reduce((a,b)=>a+b,0);
-    const tyreScore = (tyres.left?5:0)+(tyres.right?5:0);
-    const activeDeds = Object.keys(deductions).filter(d=>deductions[d]);
-    const deductionTotal = activeDeds.length*10;
+      if (!car && !name && !rego)
+        return alert("Enter Car # OR Name OR Rego");
 
-    const total = base + tyreScore - deductionTotal;
+      const base = Object.values(scores).reduce((a, b) => a + b, 0);
+      const tyreScore = (tyres.left ? 5 : 0) + (tyres.right ? 5 : 0);
+      const activeDeds = Object.keys(deductions).filter(d => deductions[d]);
+      const deductionTotal = activeDeds.length * 10;
 
-    await addDoc(collection(db,"scores"),{
-      eventName,
-      car,
-      name,
-      rego,
-      gender,
-      carClass,
-      judge:activeJudge,
-      total,
-      deductions:activeDeds
-    });
+      const total = base + tyreScore - deductionTotal;
 
-    setScores({});
-    setDeductions({});
-    setTyres({left:false,right:false});
-    setCar(""); setName(""); setRego("");
-    setGender(""); setCarClass("");
+      console.log("Submitting:", {
+        eventName,
+        car,
+        name,
+        rego,
+        total
+      });
+
+      await addDoc(collection(db, "scores"), {
+        eventName,
+        car,
+        name,
+        rego,
+        gender,
+        carClass,
+        judge: activeJudge,
+        total,
+        deductions: activeDeds,
+        createdAt: new Date()
+      });
+
+      alert("Saved ✅");
+
+      // RESET
+      setScores({});
+      setDeductions({});
+      setTyres({ left: false, right: false });
+      setCar("");
+      setName("");
+      setRego("");
+      setGender("");
+      setCarClass("");
+
+    } catch (err) {
+      console.error("SAVE ERROR:", err);
+      alert("Error saving — check console (F12)");
+    }
   };
 
   const btn={padding:10,margin:5};
