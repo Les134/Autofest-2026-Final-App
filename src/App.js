@@ -1,3 +1,4 @@
+✅ REPLACE ENTIRE src/App.js WITH THIS
 import React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import {
@@ -9,7 +10,6 @@ import {
   where
 } from "firebase/firestore";
 
-// FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
   authDomain: "autofest-burnout-judging-848fd.firebaseapp.com",
@@ -19,26 +19,23 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// CONFIG
-const categories = [
-  "Instant Smoke",
-  "Volume",
-  "Consistency",
-  "Driver Control"
-];
-
-const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl / Rotary"];
+const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
+const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
 export default function App(){
 
   const [screen,setScreen] = useState("home");
-
-  const [eventName,setEventName] = useState("");
-  const [judgeNames,setJudgeNames] = useState(["","","","","",""]);
   const [judge,setJudge] = useState("");
 
+  const [data,setData] = useState([]);
+  const [top150,setTop150] = useState([]);
+
   const [car,setCar] = useState("");
+  const [driver,setDriver] = useState("");
+  const [rego,setRego] = useState("");
+  const [carName,setCarName] = useState("");
+
   const [gender,setGender] = useState("");
   const [carClass,setCarClass] = useState("");
   const [tyres,setTyres] = useState("");
@@ -46,18 +43,18 @@ export default function App(){
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
 
-  const [data,setData] = useState([]);
-
-  // LOAD EVENT DATA
-  useEffect(()=>{
-    if(!eventName) return;
-    async function load(){
-      const q = query(collection(db,"scores"), where("event","==",eventName));
-      const res = await getDocs(q);
-      setData(res.docs.map(d=>d.data()));
+  // LOAD DATA
+  useEffect(() => {
+    async function load() {
+      try {
+        const q = await getDocs(collection(db, "scores"));
+        setData(q.docs.map(d => d.data()));
+      } catch {
+        setData([]);
+      }
     }
     load();
-  },[eventName]);
+  }, []);
 
   function setScore(cat,val){
     setScores(prev => ({ ...prev, [cat]: val }));
@@ -69,9 +66,13 @@ export default function App(){
 
   async function submit(){
 
+    if(!car) return alert("Enter car");
+    if(Object.keys(scores).length < categories.length){
+      return alert("Complete all scores");
+    }
+
     const q = query(
       collection(db,"scores"),
-      where("event","==",eventName),
       where("judge","==",judge),
       where("car","==",car)
     );
@@ -87,25 +88,34 @@ export default function App(){
 
     let finalScore = total - (deductionCount * 10) + tyreBonus;
 
-    await addDoc(collection(db,"scores"), {
-      event:eventName,
+    const payload = {
       judge,
       car,
+      driver,
+      rego,
+      carName,
       gender,
       carClass,
-      finalScore
-    });
+      tyres,
+      finalScore,
+      createdAt: new Date()
+    };
 
-    // 🔥 CLEAR FOR NEXT CAR
+    await addDoc(collection(db,"scores"), payload);
+    setData(prev => [...prev, payload]);
+
+    // RESET FOR NEXT CAR
     setScores({});
     setDeductions({});
     setCar("");
+    setDriver("");
+    setRego("");
+    setCarName("");
     setGender("");
     setCarClass("");
     setTyres("");
   }
 
-  // COMBINE SCORES (ALL JUDGES)
   function combineScores(){
     let combined = {};
 
@@ -113,9 +123,7 @@ export default function App(){
       if(!combined[e.car]){
         combined[e.car] = {
           car:e.car,
-          total:0,
-          class:e.carClass,
-          gender:e.gender
+          total:0
         };
       }
       combined[e.car].total += e.finalScore;
@@ -124,12 +132,17 @@ export default function App(){
     return Object.values(combined).sort((a,b)=>b.total-a.total);
   }
 
+  function buildTop150(){
+    setTop150(combineScores().slice(0,150));
+    setScreen("top150");
+  }
+
   const btn = {
-    padding:"12px",
-    margin:"5px",
-    background:"#222",
+    margin:5,
+    padding:12,
+    background:"#333",
     color:"#fff",
-    border:"1px solid #444"
+    border:"none"
   };
 
   const activeBtn = (active) => ({
@@ -138,108 +151,73 @@ export default function App(){
   });
 
   // HOME
-  if(screen==="home"){
+  if(screen === "home"){
     return (
-      <div style={{padding:20,background:"#111",color:"#fff"}}>
-        <h1>🔥 AUTOFEST 🔥</h1>
-
-        <input
-          placeholder="Event Name"
-          value={eventName}
-          onChange={e=>setEventName(e.target.value)}
-          style={{width:"100%",padding:10}}
-        />
-
-        <button style={btn} onClick={()=>setScreen("event")}>Setup Event</button>
-        <button style={btn} onClick={()=>setScreen("judge")}>Judge Login</button>
-        <button style={btn} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
+      <div style={{padding:20}}>
+        <h1>🔥 AutoFest 🔥</h1>
+        <button onClick={()=>setScreen("event")}>Enter Event</button>
+        <button onClick={buildTop150}>Leaderboard</button>
       </div>
     );
   }
 
-  // EVENT SETUP
-  if(screen==="event"){
+  // EVENT
+  if(screen === "event"){
     return (
-      <div style={{padding:20,color:"#fff"}}>
-        <h2>Judge Names</h2>
-
-        {judgeNames.map((n,i)=>(
-          <input
-            key={i}
-            placeholder={`Judge ${i+1}`}
-            value={n}
-            onChange={e=>{
-              let copy=[...judgeNames];
-              copy[i]=e.target.value;
-              setJudgeNames(copy);
-            }}
-            style={{width:"100%",margin:5}}
-          />
-        ))}
-
-        <button style={btn} onClick={()=>setScreen("home")}>Save</button>
+      <div style={{padding:20}}>
+        <h2>Event Access</h2>
+        <button onClick={()=>setScreen("judge")}>Continue</button>
       </div>
     );
   }
 
   // JUDGE LOGIN
-  if(screen==="judge"){
+  if(screen === "judge"){
     return (
-      <div style={{padding:20,color:"#fff"}}>
+      <div style={{padding:20}}>
         <h2>Select Judge</h2>
-
-        {judgeNames.map((name,i)=>(
-          name && (
-            <button key={i} style={btn} onClick={()=>{setJudge(name);setScreen("score");}}>
-              {name}
-            </button>
-          )
+        {[1,2,3,4,5,6].map(j=>(
+          <button key={j} onClick={()=>{setJudge(j);setScreen("score");}}>
+            Judge {j}
+          </button>
         ))}
       </div>
     );
   }
 
   // LEADERBOARD
-  if(screen==="leaderboard"){
-    const combined = combineScores();
-
+  if(screen === "top150"){
     return (
-      <div style={{padding:20,color:"#fff"}}>
+      <div style={{padding:20}}>
         <h2>Leaderboard</h2>
-
-        {combined.map((e,i)=>(
-          <div key={i}>
-            #{i+1} {e.car} - {e.total}
-          </div>
+        {top150.map((e,i)=>(
+          <div key={i}>#{i+1} {e.car} - {e.total}</div>
         ))}
-
-        <button style={btn} onClick={()=>setScreen("home")}>Home</button>
+        <button onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
   }
 
   // SCORE SHEET
   return (
-    <div style={{padding:20,background:"#111",color:"#fff"}}>
+    <div style={{padding:20}}>
 
-      <h2>{eventName}</h2>
-      <h3>{judge}</h3>
+      <h2>Judge {judge}</h2>
 
-      {/* CAR */}
       <input
         placeholder="Entrant No / Rego"
         value={car}
         onChange={e=>setCar(e.target.value)}
-        style={{width:"100%",padding:12,fontSize:18}}
+        style={{width:"100%",padding:12,fontSize:18,marginBottom:10}}
       />
 
-      {/* GENDER */}
+      {/* Gender */}
       <div>
         <button style={activeBtn(gender==="Male")} onClick={()=>setGender("Male")}>Male</button>
         <button style={activeBtn(gender==="Female")} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
-      {/* CLASS */}
+      {/* Class */}
       <div>
         {classes.map(c=>(
           <button key={c} style={activeBtn(carClass===c)} onClick={()=>setCarClass(c)}>
@@ -248,25 +226,38 @@ export default function App(){
         ))}
       </div>
 
-      {/* SCORES */}
+      {/* Scores */}
       {categories.map(cat=>(
-        <div key={cat}>
-          <strong>{cat}</strong><br/>
-          {[...Array(21)].map((_,i)=>(
-            <button key={i} style={activeBtn(scores[cat]===i)} onClick={()=>setScore(cat,i)}>
-              {i}
-            </button>
-          ))}
+        <div key={cat} style={{marginBottom:15}}>
+          <div style={{fontSize:18}}>{cat}</div>
+          <div style={{display:"flex",flexWrap:"wrap"}}>
+            {[...Array(21)].map((_,i)=>(
+              <button
+                key={i}
+                onClick={()=>setScore(cat,i)}
+                style={{
+                  width:50,
+                  height:50,
+                  margin:2,
+                  background: scores[cat]===i ? "red" : "#333",
+                  color:"#fff"
+                }}
+              >
+                {i}
+              </button>
+            ))}
+          </div>
         </div>
       ))}
 
-      {/* TYRES */}
+      {/* Tyres */}
       <div>
+        <strong>Tyres (+5)</strong><br/>
         <button style={activeBtn(tyres==="Left")} onClick={()=>setTyres("Left")}>Left</button>
         <button style={activeBtn(tyres==="Right")} onClick={()=>setTyres("Right")}>Right</button>
       </div>
 
-      {/* DEDUCTIONS */}
+      {/* Deductions */}
       <div>
         {deductionsList.map(d=>(
           <button key={d} style={activeBtn(deductions[d])} onClick={()=>toggleDeduction(d)}>
@@ -275,8 +266,9 @@ export default function App(){
         ))}
       </div>
 
-      <button style={btn} onClick={submit}>Submit</button>
-      <button style={btn} onClick={()=>setScreen("home")}>Home</button>
+      <button onClick={submit}>Submit</button>
+      <button onClick={buildTop150}>Leaderboard</button>
+      <button onClick={()=>setScreen("home")}>Home</button>
 
     </div>
   );
