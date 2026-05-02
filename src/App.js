@@ -10,51 +10,57 @@ const categories = [
   "Driver Skill & Control"
 ];
 
+const classes = [
+  "V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl / Rotary","Female"
+];
+
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
-// ================= DARK THEME =================
-const container = {
-  background: "#111",
-  color: "#fff",
-  minHeight: "100vh",
-  padding: 20
+// ================= STYLES =================
+const page = {
+  background:"#111",
+  color:"#fff",
+  minHeight:"100vh",
+  padding:20
 };
 
-const row = {
-  marginBottom: 20
-};
+const row = { marginBottom:15 };
 
 const scoreBtn = {
-  background: "#222",
-  color: "#fff",
-  border: "1px solid #555",
-  padding: "10px 12px",
-  margin: "3px",
-  minWidth: "40px",
-  borderRadius: "4px"
+  background:"#222",
+  color:"#fff",
+  border:"1px solid #555",
+  padding:"8px",
+  margin:"2px",
+  minWidth:"36px"
 };
 
 const activeScore = {
   ...scoreBtn,
-  background: "red",
-  color: "#fff",
-  border: "1px solid red"
+  background:"red",
+  border:"1px solid red"
 };
 
-const wideBtn = {
-  width: "100%",
-  padding: "16px",
-  marginTop: 10,
-  background: "#222",
-  color: "#fff",
-  border: "1px solid #555",
-  fontSize: "16px"
+const smallBtn = {
+  background:"#222",
+  color:"#fff",
+  border:"1px solid #555",
+  padding:"8px 12px",
+  margin:"2px"
 };
 
-const activeWide = {
-  ...wideBtn,
-  background: "red",
-  border: "1px solid red"
+const activeSmall = {
+  ...smallBtn,
+  background:"red"
+};
+
+const bigBtn = {
+  width:"100%",
+  padding:"16px",
+  marginTop:10,
+  background:"#222",
+  color:"#fff",
+  border:"1px solid #555"
 };
 
 // ================= APP =================
@@ -76,6 +82,7 @@ export default function App(){
   function ScoreScreen(){
 
     const [car,setCar] = useState("");
+    const [carClass,setCarClass] = useState("");
     const [scores,setScores] = useState({});
     const [tyres,setTyres] = useState({left:false,right:false});
     const [deductions,setDeductions] = useState({});
@@ -98,14 +105,16 @@ export default function App(){
       await addDoc(collection(db,"scores"),{
         eventName,
         car,
+        carClass,
         judge: activeJudge,
         total,
         deductions: activeDeds,
         createdAt: new Date()
       });
 
-      // 🔥 CLEAN RESET (WORKING)
+      // 🔥 RESET
       setCar("");
+      setCarClass("");
       setScores({});
       setTyres({left:false,right:false});
       setDeductions({});
@@ -113,73 +122,73 @@ export default function App(){
     };
 
     return(
-      <div style={container}>
+      <div style={page}>
 
         <h2>{eventName}</h2>
         <h3>{activeJudge}</h3>
 
         <input
-          style={{width:"100%",padding:12,marginBottom:15}}
+          style={{width:"100%",padding:10,marginBottom:10}}
           placeholder="Car #"
           value={car}
           onChange={(e)=>setCar(e.target.value)}
         />
 
+        {/* CLASSES */}
+        <div style={row}>
+          {classes.map(c=>(
+            <button key={c}
+              style={carClass===c ? activeSmall : smallBtn}
+              onClick={()=>setCarClass(c)}>
+              {c}
+            </button>
+          ))}
+        </div>
+
+        {/* SCORES */}
         {categories.map(cat=>(
           <div key={cat} style={row}>
             <div>{cat}</div>
-
             {Array.from({length:21},(_,i)=>(
-              <button
-                key={i}
-                style={scores[cat]===i ? activeScore : scoreBtn}
-                onClick={()=>setScores({...scores,[cat]:i})}
-              >
+              <button key={i}
+                style={scores[cat]===i?activeScore:scoreBtn}
+                onClick={()=>setScores({...scores,[cat]:i})}>
                 {i}
               </button>
             ))}
           </div>
         ))}
 
-        {/* TYRES */}
+        {/* TYRES INLINE */}
         <div style={row}>
-          <div>Blown Tyres (+5)</div>
-
-          <button
-            style={tyres.left ? activeWide : wideBtn}
-            onClick={()=>setTyres({...tyres,left:!tyres.left})}
-          >
+          Blown Tyres (+5)<br/>
+          <button style={tyres.left?activeSmall:smallBtn}
+            onClick={()=>setTyres({...tyres,left:!tyres.left})}>
             Left
           </button>
-
-          <button
-            style={tyres.right ? activeWide : wideBtn}
-            onClick={()=>setTyres({...tyres,right:!tyres.right})}
-          >
+          <button style={tyres.right?activeSmall:smallBtn}
+            onClick={()=>setTyres({...tyres,right:!tyres.right})}>
             Right
           </button>
         </div>
 
-        {/* DEDUCTIONS */}
+        {/* DEDUCTIONS INLINE */}
         <div style={row}>
-          <div>Deductions (-10)</div>
-
+          Deductions (-10)<br/>
           {deductionsList.map(d=>(
-            <button
-              key={d}
-              style={deductions[d] ? activeWide : wideBtn}
-              onClick={()=>setDeductions({...deductions,[d]:!deductions[d]})}
-            >
+            <button key={d}
+              style={deductions[d]?activeSmall:smallBtn}
+              onClick={()=>setDeductions({...deductions,[d]:!deductions[d]})}>
               {d}
             </button>
           ))}
         </div>
 
-        <button style={wideBtn} onClick={submit}>
+        <button style={bigBtn} onClick={submit}>
           {saving ? "Saving..." : "Submit Score"}
         </button>
 
-        <button style={wideBtn} onClick={()=>setScreen("home")}>
+        <button style={bigBtn} onClick={()=>setScreen("home")}>
           Home
         </button>
 
@@ -190,15 +199,38 @@ export default function App(){
   // ================= HOME =================
   if(screen==="home"){
     return(
-      <div style={container}>
+      <div style={page}>
         <h1>🔥 AUTOFEST LIVE SYNC 🔥</h1>
 
-        <button style={wideBtn} onClick={()=>setScreen("score")}>
-          Start Scoring
+        <button style={bigBtn} onClick={()=>setScreen("judge")}>
+          Judge Login
         </button>
 
-        <button style={wideBtn} onClick={()=>setScreen("leader")}>
+        <button style={bigBtn} onClick={()=>setScreen("leader")}>
           Leaderboard
+        </button>
+      </div>
+    );
+  }
+
+  // ================= JUDGE LOGIN =================
+  if(screen==="judge"){
+    const judges = ["Judge 1","Judge 2","Judge 3","Judge 4"];
+
+    return(
+      <div style={page}>
+        <h2>Judge Login</h2>
+
+        {judges.map(j=>(
+          <button key={j}
+            style={bigBtn}
+            onClick={()=>{setActiveJudge(j);setScreen("score")}}>
+            {j}
+          </button>
+        ))}
+
+        <button style={bigBtn} onClick={()=>setScreen("home")}>
+          Back
         </button>
       </div>
     );
@@ -212,7 +244,7 @@ export default function App(){
   // ================= LEADERBOARD =================
   if(screen==="leader"){
     return(
-      <div style={container}>
+      <div style={page}>
         <h2>Leaderboard</h2>
 
         {entries
@@ -220,16 +252,16 @@ export default function App(){
           .sort((a,b)=>b.total-a.total)
           .map((e,i)=>(
             <div key={i}>
-              #{i+1} | Car {e.car} | {e.total}
+              #{i+1} | Car {e.car} | {e.carClass} | {e.total}
             </div>
           ))}
 
-        <button style={wideBtn} onClick={()=>setScreen("home")}>
+        <button style={bigBtn} onClick={()=>setScreen("home")}>
           Back
         </button>
       </div>
     );
   }
 
-  return <div style={container}>Loading...</div>;
+  return <div style={page}>Loading...</div>;
 }
