@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, query, where } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
@@ -17,12 +24,11 @@ const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
 export default function App(){
 
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [judge, setJudge] = useState("");
+  const [screen,setScreen] = useState("home");
+  const [judge,setJudge] = useState("");
 
   const [data,setData] = useState([]);
   const [top150,setTop150] = useState([]);
-  const [screen,setScreen] = useState("judge");
 
   const [car,setCar] = useState("");
   const [driver,setDriver] = useState("");
@@ -35,11 +41,19 @@ export default function App(){
   const [scores,setScores] = useState({});
   const [deductions,setDeductions] = useState({});
 
-  useEffect(()=>{
-    getDocs(collection(db,"scores")).then(q=>{
-      setData(q.docs.map(d=>d.data()));
-    });
-  },[]);
+  // SAFE FIREBASE LOAD
+  useEffect(() => {
+    async function load() {
+      try {
+        const q = await getDocs(collection(db, "scores"));
+        setData(q.docs.map(d => d.data()));
+      } catch (err) {
+        console.log("Firebase error:", err);
+        setData([]);
+      }
+    }
+    load();
+  }, []);
 
   function setScore(cat,val){
     setScores(prev => ({ ...prev, [cat]: val }));
@@ -56,61 +70,56 @@ export default function App(){
       return alert("Complete all scores");
     }
 
-    const q = query(
-      collection(db,"scores"),
-      where("judge","==",judge),
-      where("car","==",car)
-    );
+    try {
+      const q = query(
+        collection(db,"scores"),
+        where("judge","==",judge),
+        where("car","==",car)
+      );
 
-    const existing = await getDocs(q);
-    if(!existing.empty){
-      return alert("Already scored this car");
+      const existing = await getDocs(q);
+      if(!existing.empty){
+        return alert("Already scored this car");
+      }
+
+      let total = Object.values(scores).reduce((a,b)=>a+b,0);
+      let deductionCount = Object.values(deductions).filter(Boolean).length;
+      let finalScore = total - (deductionCount * 10);
+
+      const payload = {
+        judge, car, driver, rego, carName,
+        gender, carClass,
+        finalScore,
+        createdAt: new Date()
+      };
+
+      await addDoc(collection(db,"scores"), payload);
+      setData(prev => [...prev, payload]);
+
+      // reset
+      setScores({});
+      setDeductions({});
+      setCar("");
+      setDriver("");
+      setRego("");
+      setCarName("");
+      setGender("");
+      setCarClass("");
+
+    } catch(err){
+      alert("Save failed");
+      console.log(err);
     }
-
-    let total = Object.values(scores).reduce((a,b)=>a+b,0);
-    let deductionCount = Object.values(deductions).filter(Boolean).length;
-    let finalScore = total - (deductionCount * 10);
-
-    const payload = {
-      judge,
-      car,
-      driver,
-      rego,
-      carName,
-      gender,
-      carClass,
-      finalScore,
-      createdAt: new Date()
-    };
-
-    await addDoc(collection(db,"scores"), payload);
-    setData(prev => [...prev, payload]);
-
-    setScores({});
-    setDeductions({});
-    setCar("");
-    setDriver("");
-    setRego("");
-    setCarName("");
-    setGender("");
-    setCarClass("");
   }
 
   function combineScores(){
     let combined = {};
 
-    data.forEach(e=>{
-      let key = e.car || e.rego || "Unknown";
-
+    (data || []).forEach(e=>{
+      let key = e.car || "Unknown";
       if(!combined[key]){
-        combined[key] = {
-          car:e.car,
-          total:0,
-          carClass:e.carClass,
-          gender:e.gender
-        };
+        combined[key] = { car:e.car, total:0 };
       }
-
       combined[key].total += e.finalScore;
     });
 
@@ -126,20 +135,37 @@ export default function App(){
     setScreen("top150");
   }
 
-  // 🔐 LOGIN SCREEN
-  if (!loggedIn) {
+  // HOME
+  if(screen === "home"){
     return (
-      <div style={{ padding: 20 }}>
+      <div style={{padding:20}}>
+        <h1>🔥 AutoFest 🔥</h1>
+        <button onClick={()=>setScreen("event")}>Enter Event</button>
+        <button onClick={buildTop150}>View Results</button>
+      </div>
+    );
+  }
+
+  // EVENT LOGIN
+  if(screen === "event"){
+    return (
+      <div style={{padding:20}}>
+        <h2>Event Access</h2>
+        <button onClick={()=>setScreen("judge")}>Continue</button>
+      </div>
+    );
+  }
+
+  // JUDGE LOGIN
+  if(screen === "judge"){
+    return (
+      <div style={{padding:20}}>
         <h2>Select Judge</h2>
-        {[1,2,3,4,5,6].map(j => (
-          <button
-            key={j}
-            onClick={() => {
-              setJudge(j);
-              setLoggedIn(true);
-            }}
-            style={{ margin: 10, padding: 20 }}
-          >
+        {[1,2,3,4,5,6].map(j=>(
+          <button key={j} onClick={()=>{
+            setJudge(j);
+            setScreen("score");
+          }}>
             Judge {j}
           </button>
         ))}
@@ -147,22 +173,22 @@ export default function App(){
     );
   }
 
-  // 🏁 TOP 150
+  // TOP 150
   if(screen === "top150"){
     return (
       <div style={{padding:20}}>
         <h2>Top 150</h2>
         {top150.map((e,i)=>(
           <div key={i}>
-            #{i+1} | {e.car} | {e.total}
+            #{i+1} {e.car} - {e.total}
           </div>
         ))}
-        <button onClick={()=>setScreen("judge")}>Back</button>
+        <button onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
   }
 
-  // 🎯 MAIN SCORING
+  // SCORING
   return (
     <div style={{padding:20}}>
 
@@ -199,8 +225,9 @@ export default function App(){
         ))}
       </div>
 
-      <button onClick={submit}>Submit Score</button>
+      <button onClick={submit}>Submit</button>
       <button onClick={buildTop150}>Top 150</button>
+      <button onClick={()=>setScreen("home")}>Home</button>
 
     </div>
   );
