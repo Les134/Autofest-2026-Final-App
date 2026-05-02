@@ -22,17 +22,17 @@ export default function App(){
   const [car,setCar] = useState("");
   const [scores,setScores] = useState({});
 
-  // 🔥 LOAD LIVE DATA
+  // 🔥 THIS forces full reset of score screen
+  const [scoreScreenKey,setScoreScreenKey] = useState(0);
+
+  // LIVE DATA
   useEffect(()=>{
     const unsub = onSnapshot(collection(db,"scores"), snap=>{
-      const data = snap.docs.map(d=>d.data());
-      console.log("LIVE DATA:", data);
-      setEntries(data);
+      setEntries(snap.docs.map(d=>d.data()));
     });
     return ()=>unsub();
   },[]);
 
-  // START EVENT
   const startEvent = ()=>{
     if(!eventName) return alert("Enter event name");
 
@@ -43,7 +43,6 @@ export default function App(){
     setScreen("judge");
   };
 
-  // SUBMIT
   const submit = async () => {
 
     if (!eventName) return alert("No event started");
@@ -62,8 +61,12 @@ export default function App(){
 
     alert("Saved ✅");
 
+    // 🔥 RESET ALL STATE
     setCar("");
     setScores({});
+
+    // 🔥 FORCE COMPLETE REMOUNT
+    setScoreScreenKey(prev => prev + 1);
   };
 
   const btn={padding:10,margin:5};
@@ -130,10 +133,10 @@ export default function App(){
     );
   }
 
-  // SCORE
+  // SCORE (🔥 key forces FULL remount)
   if(screen==="score"){
     return(
-      <div style={{padding:20}}>
+      <div key={scoreScreenKey} style={{padding:20}}>
         <h3>{eventName} - {activeJudge}</h3>
 
         <input
@@ -156,7 +159,7 @@ export default function App(){
         ))}
 
         <button onClick={submit}>Submit</button>
-        <button onClick={()=>setScreen("leader")}>View Leaderboard</button>
+        <button onClick={()=>setScreen("leader")}>Leaderboard</button>
         <button onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
@@ -168,13 +171,11 @@ export default function App(){
       <div style={{padding:20}}>
         <h2>🏆 Leaderboard</h2>
 
-        {entries.length === 0 && <p>No scores yet</p>}
-
         {entries
           .sort((a,b)=>b.total-a.total)
           .map((e,i)=>(
-            <div key={i} style={{padding:10,borderBottom:"1px solid #ccc"}}>
-              <strong>#{i+1}</strong> | Car: {e.car} | Score: {e.total}
+            <div key={i}>
+              #{i+1} | Car {e.car} | {e.total}
             </div>
           ))}
 
