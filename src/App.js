@@ -56,8 +56,6 @@ export default function App(){
     }
 
     load();
-    const interval = setInterval(load, 2000);
-    return ()=>clearInterval(interval);
   },[eventName]);
 
   function setScore(cat,val){
@@ -70,24 +68,37 @@ export default function App(){
 
   async function submit(){
 
+    if(!car || !judge){
+      alert("Missing car or judge");
+      return;
+    }
+
     let total = Object.values(scores).reduce((a,b)=>a+b,0);
     let deductionCount = Object.values(deductions).filter(Boolean).length;
     let tyreBonus = tyres ? 5 : 0;
 
     let finalScore = total - (deductionCount * 10) + tyreBonus;
 
-    await addDoc(collection(db,"scores"), {
-      event:eventName,
-      judge,
-      car,
-      gender,
-      carClass,
-      finalScore
-    });
+    try {
+      await addDoc(collection(db,"scores"), {
+        event:eventName,
+        judge,
+        car,
+        gender,
+        carClass,
+        finalScore
+      });
 
-    setScores({});
-    setDeductions({});
-    setCar("");
+      alert("Score submitted");
+
+      setScores({});
+      setDeductions({});
+      setCar("");
+
+    } catch (e){
+      alert("Error saving score");
+      console.error(e);
+    }
   }
 
   function combineScores(){
@@ -96,9 +107,7 @@ export default function App(){
       if(!combined[e.car]){
         combined[e.car] = {
           car:e.car,
-          total:0,
-          class:e.carClass,
-          gender:e.gender
+          total:0
         };
       }
       combined[e.car].total += e.finalScore;
@@ -108,33 +117,28 @@ export default function App(){
 
   const overall = combineScores();
 
-  // STYLES (THIS FIXES YOUR UI ISSUE)
+  // STYLES (MATCH YOUR ORIGINAL LOOK)
   const row = {
     display: "flex",
     flexWrap: "wrap",
-    gap: "8px",
-    marginBottom: "18px"
+    gap: "6px",
+    marginBottom: "14px"
   };
 
-  const scoreBtn = {
-    width: "48px",
-    height: "48px",
-    background: "#333",
+  const btn = {
+    padding: "10px 14px",
+    background: "#222",
     color: "#fff",
-    border: "1px solid #555",
-    fontSize: "16px"
+    border: "1px solid #555"
   };
 
-  const activeBtn = (active) => ({
-    ...scoreBtn,
-    background: active ? "#e53935" : "#333"
+  const scoreBtn = (active) => ({
+    width: "42px",
+    height: "42px",
+    background: active ? "#e53935" : "#2a2a2a",
+    color: "#fff",
+    border: "1px solid #555"
   });
-
-  const sectionTitle = {
-    marginTop: "15px",
-    marginBottom: "6px",
-    fontWeight: "bold"
-  };
 
   const menuBtn = {
     width:"100%",
@@ -144,7 +148,7 @@ export default function App(){
     color:"#fff"
   };
 
-  // HOME
+  // HOME (RESTORED)
   if(screen==="home"){
     return (
       <div style={{padding:20}}>
@@ -153,11 +157,15 @@ export default function App(){
         <button style={menuBtn} onClick={()=>setScreen("login")}>Judge Login</button>
         <button style={menuBtn} onClick={()=>setScreen("score")}>Resume Judging</button>
         <button style={menuBtn} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
+        <button style={menuBtn}>Class Leaderboard</button>
+        <button style={menuBtn}>Female Overall</button>
+        <button style={menuBtn}>Top 150</button>
+        <button style={menuBtn}>Top 30 Finals</button>
       </div>
     );
   }
 
-  // LOGIN
+  // LOGIN (FIXED)
   if(screen==="login"){
     return (
       <div style={{padding:20}}>
@@ -177,7 +185,7 @@ export default function App(){
 
         <button style={menuBtn} onClick={()=>{
           if(!eventName || !judgeName){
-            alert("Enter Event + Judge");
+            alert("Enter details");
             return;
           }
           setJudge(judgeName);
@@ -196,14 +204,12 @@ export default function App(){
     return (
       <div style={{padding:20}}>
         <h2>No Judge Logged In</h2>
-        <button style={menuBtn} onClick={()=>setScreen("login")}>
-          Go to Login
-        </button>
+        <button style={menuBtn} onClick={()=>setScreen("login")}>Login</button>
       </div>
     );
   }
 
-  // SCORE SCREEN (FULL + FIXED UI)
+  // SCORE SCREEN (MATCH YOUR ORIGINAL)
   if(screen==="score"){
     return (
       <div style={{padding:20}}>
@@ -218,13 +224,13 @@ export default function App(){
         />
 
         <div style={row}>
-          <button style={activeBtn(gender==="Male")} onClick={()=>setGender("Male")}>Male</button>
-          <button style={activeBtn(gender==="Female")} onClick={()=>setGender("Female")}>Female</button>
+          <button style={btn} onClick={()=>setGender("Male")}>Male</button>
+          <button style={btn} onClick={()=>setGender("Female")}>Female</button>
         </div>
 
         <div style={row}>
           {classes.map(c=>(
-            <button key={c} style={activeBtn(carClass===c)} onClick={()=>setCarClass(c)}>
+            <button key={c} style={btn} onClick={()=>setCarClass(c)}>
               {c}
             </button>
           ))}
@@ -232,13 +238,13 @@ export default function App(){
 
         {categories.map(cat=>(
           <div key={cat}>
-            <div style={sectionTitle}>{cat}</div>
+            <div>{cat}</div>
 
             <div style={row}>
               {[...Array(20)].map((_,i)=>(
                 <button
                   key={i}
-                  style={activeBtn(scores[cat]===i+1)}
+                  style={scoreBtn(scores[cat]===i+1)}
                   onClick={()=>setScore(cat,i+1)}
                 >
                   {i+1}
@@ -248,16 +254,14 @@ export default function App(){
           </div>
         ))}
 
-        <div style={sectionTitle}>Tyres (+5)</div>
         <div style={row}>
-          <button style={activeBtn(tyres==="Left")} onClick={()=>setTyres("Left")}>Left</button>
-          <button style={activeBtn(tyres==="Right")} onClick={()=>setTyres("Right")}>Right</button>
+          <button style={btn} onClick={()=>setTyres("Left")}>Left</button>
+          <button style={btn} onClick={()=>setTyres("Right")}>Right</button>
         </div>
 
-        <div style={sectionTitle}>Deductions (-10)</div>
         <div style={row}>
           {deductionsList.map(d=>(
-            <button key={d} style={activeBtn(deductions[d])} onClick={()=>toggleDeduction(d)}>
+            <button key={d} style={btn} onClick={()=>toggleDeduction(d)}>
               {d}
             </button>
           ))}
