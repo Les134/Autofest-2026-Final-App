@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -35,6 +35,9 @@ export default function App(){
   const [screen,setScreen] = useState("home");
 
   const [eventName,setEventName] = useState("");
+  const [eventLocked,setEventLocked] = useState(false);
+
+  const [judgeNames,setJudgeNames] = useState(["","","","","",""]);
   const [judge,setJudge] = useState("");
 
   const [car,setCar] = useState("");
@@ -52,18 +55,15 @@ export default function App(){
     fontSize:"20px",
     background:"#1e1e1e",
     color:"#fff",
-    border:"1px solid #444",
-    borderRadius:"6px"
+    border:"1px solid #444"
   };
 
   const scoreBtn = (active) => ({
     width:45,
     height:45,
     margin:4,
-    fontSize:16,
     background: active ? "red" : "#333",
-    color:"#fff",
-    border:"none"
+    color:"#fff"
   });
 
   function setScore(cat,val){
@@ -75,10 +75,6 @@ export default function App(){
   }
 
   async function submit(){
-
-    if(!eventName) return alert("Enter event name");
-    if(!judge) return alert("Select judge");
-    if(!car) return alert("Enter car");
 
     const q = query(
       collection(db,"scores"),
@@ -114,122 +110,153 @@ export default function App(){
     setScores({});
     setDeductions({});
     setCar("");
-    setGender("");
-    setCarClass("");
-    setTyres("");
   }
 
   // ================= HOME =================
   if(screen==="home"){
     return (
-      <div style={{padding:20,background:"#111",minHeight:"100vh",color:"#fff"}}>
-        <h1 style={{textAlign:"center"}}>🔥 AUTOFEST LIVE SYNC 🔥</h1>
+      <div style={{padding:20,background:"#111",color:"#fff"}}>
+        <h1>🔥 AUTOFEST LIVE SYNC 🔥</h1>
+
+        <button style={btn} onClick={()=>setScreen("eventSetup")}>
+          Event Login / Setup
+        </button>
+
+        <button style={btn} onClick={()=>setScreen("judgeLogin")}>
+          Judge Login
+        </button>
+      </div>
+    );
+  }
+
+  // ================= EVENT SETUP =================
+  if(screen==="eventSetup"){
+    return (
+      <div style={{padding:20,background:"#111",color:"#fff"}}>
+
+        <h2>Event Setup</h2>
 
         <input
           placeholder="Event Name"
           value={eventName}
           onChange={e=>setEventName(e.target.value)}
-          style={{padding:12,width:"100%",marginBottom:10}}
+          style={{width:"100%",padding:10}}
         />
 
-        <button style={btn} onClick={()=>setScreen("judge")}>Judge Login</button>
-        <button style={btn}>Resume Scoring</button>
-        <button style={btn}>Leaderboard</button>
-        <button style={btn}>Event Archive</button>
-        <button style={btn}>Set Admin</button>
-        <button style={btn}>Admin Login</button>
+        <h3>Judge Names</h3>
+
+        {judgeNames.map((name,i)=>(
+          <input
+            key={i}
+            placeholder={`Judge ${i+1}`}
+            value={name}
+            onChange={e=>{
+              let copy=[...judgeNames];
+              copy[i]=e.target.value;
+              setJudgeNames(copy);
+            }}
+            style={{width:"100%",padding:10,marginTop:5}}
+          />
+        ))}
+
+        <button
+          style={btn}
+          onClick={()=>{
+            if(!eventName) return alert("Enter event name");
+            setEventLocked(true);
+            setScreen("home");
+          }}
+        >
+          LOCK EVENT
+        </button>
+
       </div>
     );
   }
 
   // ================= JUDGE LOGIN =================
-  if(screen==="judge"){
+  if(screen==="judgeLogin"){
+
+    if(!eventLocked){
+      return (
+        <div style={{padding:20,color:"#fff"}}>
+          <h2>No Event Started</h2>
+          <button style={btn} onClick={()=>setScreen("eventSetup")}>
+            Setup Event First
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div style={{padding:20,background:"#111",color:"#fff"}}>
         <h2>Select Judge</h2>
-        {[1,2,3,4,5,6].map(j=>(
-          <button key={j} style={btn} onClick={()=>{setJudge(j);setScreen("score");}}>
-            Judge {j}
-          </button>
+
+        {judgeNames.map((name,i)=>(
+          name && (
+            <button
+              key={i}
+              style={btn}
+              onClick={()=>{setJudge(name);setScreen("score");}}
+            >
+              {name}
+            </button>
+          )
         ))}
+
       </div>
     );
   }
 
-  // ================= SCORE SHEET =================
+  // ================= SCORE =================
   return (
     <div style={{padding:20,background:"#111",color:"#fff"}}>
 
       <h2>{eventName}</h2>
-      <h3>Judge {judge}</h3>
+      <h3>{judge}</h3>
 
       <input
         placeholder="Car #"
         value={car}
         onChange={e=>setCar(e.target.value)}
-        style={{padding:10,width:"100%",marginBottom:10}}
       />
 
-      {/* Gender */}
       <div>
-        <strong>Gender</strong><br/>
         <button style={btn} onClick={()=>setGender("Male")}>Male</button>
         <button style={btn} onClick={()=>setGender("Female")}>Female</button>
       </div>
 
-      {/* Classes */}
       <div>
-        <strong>Class</strong>
         {classes.map(c=>(
           <button key={c} style={btn} onClick={()=>setCarClass(c)}>{c}</button>
         ))}
       </div>
 
-      {/* Tyres */}
       <div>
-        <strong>Blown Tyres (+5)</strong>
         <button style={btn} onClick={()=>setTyres("Left")}>Left</button>
         <button style={btn} onClick={()=>setTyres("Right")}>Right</button>
       </div>
 
-      {/* Scores */}
       {categories.map(cat=>(
         <div key={cat}>
           <strong>{cat}</strong>
-          <div style={{display:"flex",flexWrap:"wrap"}}>
-            {[...Array(21)].map((_,i)=>(
-              <button
-                key={i}
-                onClick={()=>setScore(cat,i)}
-                style={scoreBtn(scores[cat]===i)}
-              >
-                {i}
-              </button>
-            ))}
-          </div>
+          {[...Array(21)].map((_,i)=>(
+            <button key={i} style={scoreBtn(scores[cat]===i)} onClick={()=>setScore(cat,i)}>
+              {i}
+            </button>
+          ))}
         </div>
       ))}
 
-      {/* Deductions */}
       <div>
-        <strong>Deductions (-10)</strong>
         {deductionsList.map(d=>(
-          <button
-            key={d}
-            onClick={()=>toggleDeduction(d)}
-            style={{
-              ...btn,
-              background: deductions[d] ? "red" : "#333"
-            }}
-          >
+          <button key={d} style={btn} onClick={()=>toggleDeduction(d)}>
             {d}
           </button>
         ))}
       </div>
 
       <button style={btn} onClick={submit}>Submit Score</button>
-      <button style={btn} onClick={()=>setScreen("home")}>Home</button>
-
     </div>
   );
 }
