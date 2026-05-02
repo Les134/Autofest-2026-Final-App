@@ -21,12 +21,15 @@ const db = getFirestore(app);
 
 // CONFIG
 const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
-const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
 export default function App(){
 
   const [screen,setScreen] = useState("home");
+
+  // 🔑 NEW: EVENT + JUDGE STATE
+  const [eventId,setEventId] = useState("");
+  const [eventLocked,setEventLocked] = useState(false);
   const [judge,setJudge] = useState("");
 
   const [data,setData] = useState([]);
@@ -38,15 +41,17 @@ export default function App(){
 
   useEffect(()=>{
     async function load(){
+      if(!eventId) return;
       try{
-        const q = await getDocs(collection(db,"scores"));
-        setData(q.docs.map(d=>d.data()));
+        const q = query(collection(db,"scores"), where("eventId","==",eventId));
+        const res = await getDocs(q);
+        setData(res.docs.map(d=>d.data()));
       }catch{
         setData([]);
       }
     }
     load();
-  },[]);
+  },[eventId]);
 
   function setScore(cat,val){
     setScores(prev => ({ ...prev, [cat]: val }));
@@ -57,12 +62,34 @@ export default function App(){
   }
 
   async function submit(){
+
+    if(!eventId) return alert("Event not started");
+    if(!judge) return alert("Judge not selected");
+    if(!car) return alert("Enter car");
+
+    // 🔒 prevent duplicate per judge per event
+    const q = query(
+      collection(db,"scores"),
+      where("eventId","==",eventId),
+      where("judge","==",judge),
+      where("car","==",car)
+    );
+
+    const existing = await getDocs(q);
+    if(!existing.empty){
+      return alert("Already scored");
+    }
+
     let total = Object.values(scores).reduce((a,b)=>a+b,0);
     let deductionCount = Object.values(deductions).filter(Boolean).length;
     let finalScore = total - (deductionCount * 10);
 
     await addDoc(collection(db,"scores"), {
-      judge, car, finalScore, createdAt:new Date()
+      eventId,
+      judge,
+      car,
+      finalScore,
+      createdAt:new Date()
     });
 
     setScores({});
@@ -98,7 +125,9 @@ export default function App(){
     borderRadius:"6px"
   };
 
-  // HOME SCREEN (MATCH YOUR OLD ONE)
+  // ================= UI =================
+
+  // HOME
   if(screen === "home"){
     return (
       <div style={{padding:20,background:"#111",minHeight:"100vh",color:"#fff"}}>
@@ -106,16 +135,39 @@ export default function App(){
 
         <button style={btnStyle} onClick={()=>setScreen("event")}>New Event</button>
         <button style={btnStyle} onClick={()=>setScreen("judge")}>Judge Login</button>
-        <button style={btnStyle}>Resume Scoring</button>
         <button style={btnStyle} onClick={buildTop150}>Leaderboard</button>
-        <button style={btnStyle}>Event Archive</button>
-        <button style={btnStyle}>Set Admin</button>
-        <button style={btnStyle}>Admin Login</button>
       </div>
     );
   }
 
-  // JUDGE LOGIN
+  // EVENT LOGIN
+  if(screen === "event"){
+    return (
+      <div style={{padding:20,background:"#111",minHeight:"100vh",color:"#fff"}}>
+        <h2>Start Event</h2>
+
+        <input
+          placeholder="Event Name / ID"
+          value={eventId}
+          onChange={e=>setEventId(e.target.value)}
+          style={{padding:10,width:"100%"}}
+        />
+
+        <button
+          style={btnStyle}
+          onClick={()=>{
+            if(!eventId) return alert("Enter event name");
+            setEventLocked(true);
+            setScreen("judge");
+          }}
+        >
+          Start Event
+        </button>
+      </div>
+    );
+  }
+
+  // JUDGE LOGIN (MAX 6)
   if(screen === "judge"){
     return (
       <div style={{padding:20,background:"#111",minHeight:"100vh",color:"#fff"}}>
@@ -142,11 +194,12 @@ export default function App(){
     );
   }
 
-  // SCORE SHEET (MATCH YOUR LOOK)
+  // SCORE SCREEN
   return (
     <div style={{padding:20,background:"#111",minHeight:"100vh",color:"#fff"}}>
 
-      <h2>Judge {judge}</h2>
+      <h2>Event: {eventId}</h2>
+      <h3>Judge {judge}</h3>
 
       <input
         placeholder="Car #"
@@ -196,6 +249,7 @@ export default function App(){
       </div>
 
       <button style={btnStyle} onClick={submit}>Submit Score</button>
+      <button style={btnStyle} onClick={buildTop150}>Leaderboard</button>
       <button style={btnStyle} onClick={()=>setScreen("home")}>Home</button>
 
     </div>
