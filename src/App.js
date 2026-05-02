@@ -22,7 +22,7 @@ export default function App(){
   const [car,setCar] = useState("");
   const [scores,setScores] = useState({});
 
-  // 🔥 LOAD DATA
+  // 🔥 LOAD LIVE DATA
   useEffect(()=>{
     const unsub = onSnapshot(collection(db,"scores"), snap=>{
       const data = snap.docs.map(d=>d.data());
@@ -32,7 +32,7 @@ export default function App(){
     return ()=>unsub();
   },[]);
 
-  // 🔥 START EVENT
+  // START EVENT
   const startEvent = ()=>{
     if(!eventName) return alert("Enter event name");
 
@@ -43,53 +43,33 @@ export default function App(){
     setScreen("judge");
   };
 
-  // 🔥 SUBMIT (FORCED DEBUG VERSION)
+  // SUBMIT
   const submit = async () => {
 
-    alert("Submit clicked");
+    if (!eventName) return alert("No event started");
+    if (!activeJudge) return alert("No judge selected");
+    if (!car) return alert("Enter Car #");
 
-    try {
+    const total = Object.values(scores).reduce((a,b)=>a+b,0);
 
-      if (!eventName) {
-        alert("No event started");
-        return;
-      }
+    await addDoc(collection(db, "scores"), {
+      eventName,
+      car,
+      judge: activeJudge,
+      total,
+      createdAt: new Date()
+    });
 
-      if (!activeJudge) {
-        alert("No judge selected");
-        return;
-      }
+    alert("Saved ✅");
 
-      if (!car) {
-        alert("Enter Car #");
-        return;
-      }
-
-      console.log("WRITING TO FIREBASE...");
-
-      await addDoc(collection(db, "scores"), {
-        eventName,
-        car,
-        judge: activeJudge,
-        total: Object.values(scores).reduce((a,b)=>a+b,0),
-        createdAt: new Date()
-      });
-
-      alert("Saved to Firebase ✅");
-
-      setCar("");
-      setScores({});
-
-    } catch (err) {
-      console.error("FIREBASE ERROR:", err);
-      alert("ERROR — open console (F12)");
-    }
+    setCar("");
+    setScores({});
   };
 
   const btn={padding:10,margin:5};
   const active={...btn,background:"red",color:"#fff"};
 
-  // ================= HOME =================
+  // HOME
   if(screen==="home"){
     return(
       <div style={{padding:20}}>
@@ -102,7 +82,7 @@ export default function App(){
     );
   }
 
-  // ================= SETUP =================
+  // SETUP
   if(screen==="setup"){
     return(
       <div style={{padding:20}}>
@@ -126,15 +106,13 @@ export default function App(){
           />
         ))}
 
-        <br/><br/>
-
         <button onClick={startEvent}>Start Event</button>
         <button onClick={()=>setScreen("home")}>Back</button>
       </div>
     );
   }
 
-  // ================= JUDGE =================
+  // JUDGE
   if(screen==="judge"){
     return(
       <div style={{padding:20}}>
@@ -147,14 +125,12 @@ export default function App(){
           </button>
         ))}
 
-        <br/><br/>
-
         <button onClick={()=>setScreen("home")}>Back</button>
       </div>
     );
   }
 
-  // ================= SCORE =================
+  // SCORE
   if(screen==="score"){
     return(
       <div style={{padding:20}}>
@@ -179,26 +155,26 @@ export default function App(){
           </div>
         ))}
 
-        <br/>
-
         <button onClick={submit}>Submit</button>
-        <button onClick={()=>setScreen("judge")}>Next Judge</button>
+        <button onClick={()=>setScreen("leader")}>View Leaderboard</button>
         <button onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
   }
 
-  // ================= LEADERBOARD =================
+  // LEADERBOARD
   if(screen==="leader"){
     return(
       <div style={{padding:20}}>
-        <h2>Leaderboard</h2>
+        <h2>🏆 Leaderboard</h2>
+
+        {entries.length === 0 && <p>No scores yet</p>}
 
         {entries
           .sort((a,b)=>b.total-a.total)
           .map((e,i)=>(
-            <div key={i}>
-              {e.car} | {e.total}
+            <div key={i} style={{padding:10,borderBottom:"1px solid #ccc"}}>
+              <strong>#{i+1}</strong> | Car: {e.car} | Score: {e.total}
             </div>
           ))}
 
