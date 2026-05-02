@@ -1,266 +1,208 @@
 import React, { useState, useEffect } from "react";
-import { db } from "./firebase";
-import {
-  collection,
-  addDoc,
-  onSnapshot,
-  doc,
-  setDoc,
-  getDoc
-} from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, getDocs, query, where } from "firebase/firestore";
 
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
-} from "firebase/auth";
+const firebaseConfig = {
+  apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
+  authDomain: "autofest-burnout-judging-848fd.firebaseapp.com",
+  projectId: "autofest-burnout-judging-848fd"
+};
 
-const auth = getAuth();
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-// ================= CONFIG =================
-const classes = [
-  "V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl / Rotary"
-];
-
-const categories = [
-  "Instant Smoke","Volume of Smoke","Constant Smoke","Driver Skill & Control"
-];
-
+const categories = ["Smoke","Commitment","Style","Control","Entertainment"];
+const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","Rotary"];
 const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
 
-// ================= STYLE =================
-const page = { background:"#111", color:"#fff", minHeight:"100vh", padding:20 };
-const bigBtn = { width:"100%", padding:18, margin:"6px 0", background:"#222", color:"#fff" };
-const input = { width:"100%", padding:14, margin:"6px 0" };
-
-const active = { background:"red" };
-
-// ================= APP =================
 export default function App(){
 
-  const [user,setUser] = useState(null);
-  const [email,setEmail] = useState("");
-  const [password,setPassword] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [judge, setJudge] = useState("");
 
-  const [screen,setScreen] = useState("home");
-  const [eventName,setEventName] = useState("");
-  const [judgeName,setJudgeName] = useState("");
-  const [eventLocked,setEventLocked] = useState(false);
-  const [entries,setEntries] = useState([]);
+  const [data,setData] = useState([]);
+  const [top150,setTop150] = useState([]);
+  const [screen,setScreen] = useState("judge");
 
-  // 🔐 AUTH LISTENER
+  const [car,setCar] = useState("");
+  const [driver,setDriver] = useState("");
+  const [rego,setRego] = useState("");
+  const [carName,setCarName] = useState("");
+
+  const [gender,setGender] = useState("");
+  const [carClass,setCarClass] = useState("");
+
+  const [scores,setScores] = useState({});
+  const [deductions,setDeductions] = useState({});
+
   useEffect(()=>{
-    const unsub = onAuthStateChanged(auth,(u)=>{
-      setUser(u);
+    getDocs(collection(db,"scores")).then(q=>{
+      setData(q.docs.map(d=>d.data()));
     });
-    return ()=>unsub();
   },[]);
 
-  // 🔥 FIRESTORE LIVE
-  useEffect(()=>{
-    if(!user) return;
-    const unsub = onSnapshot(collection(db,"scores"),snap=>{
-      setEntries(snap.docs.map(d=>d.data()));
-    });
-    return ()=>unsub();
-  },[user]);
-
-  // ================= LOGIN =================
-  if(!user){
-    return(
-      <div style={page}>
-        <h2>Autofest Login</h2>
-
-        <input style={input}
-          placeholder="Email"
-          value={email}
-          onChange={e=>setEmail(e.target.value)}
-        />
-
-        <input style={input}
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e=>setPassword(e.target.value)}
-        />
-
-        <button style={bigBtn}
-          onClick={()=>signInWithEmailAndPassword(auth,email,password)}>
-          Login
-        </button>
-      </div>
-    );
+  function setScore(cat,val){
+    setScores(prev => ({ ...prev, [cat]: val }));
   }
 
-  // ================= LOGOUT =================
-  const logout = () => signOut(auth);
+  function toggleDeduction(d){
+    setDeductions(prev => ({ ...prev, [d]: !prev[d] }));
+  }
 
-  const loadEvent = async name => {
-    if(!name) return;
-    const ref = doc(db,"events",name);
-    const snap = await getDoc(ref);
-    setEventLocked(snap.exists() ? snap.data().locked : false);
-  };
+  async function submit(){
 
-  const lockEvent = async () => {
-    await setDoc(doc(db,"events",eventName),{
-      locked:true,
-      createdAt:new Date()
-    });
-    setEventLocked(true);
-  };
+    if(!car) return alert("Enter car");
+    if(Object.keys(scores).length < categories.length){
+      return alert("Complete all scores");
+    }
 
-  // ================= SCORE =================
-  function ScoreScreen(){
+    const q = query(
+      collection(db,"scores"),
+      where("judge","==",judge),
+      where("car","==",car)
+    );
 
-    const [car,setCar] = useState("");
-    const [gender,setGender] = useState("");
-    const [carClass,setCarClass] = useState("");
-    const [scores,setScores] = useState({});
-    const [deductions,setDeductions] = useState({});
-    const [tyres,setTyres] = useState({left:false,right:false});
+    const existing = await getDocs(q);
+    if(!existing.empty){
+      return alert("Already scored this car");
+    }
 
-    const submit = async () => {
+    let total = Object.values(scores).reduce((a,b)=>a+b,0);
+    let deductionCount = Object.values(deductions).filter(Boolean).length;
+    let finalScore = total - (deductionCount * 10);
 
-      const base = Object.values(scores).reduce((a,b)=>a+b,0);
-      const tyreCount = (tyres.left?1:0)+(tyres.right?1:0);
-      const tyreScore = tyreCount * 5;
-      const activeDeds = Object.keys(deductions).filter(d=>deductions[d]);
-      const total = base + tyreScore - (activeDeds.length * 10);
-
-      await addDoc(collection(db,"scores"),{
-        eventName,
-        judge: user.email,
-        car,
-        carClass,
-        gender,
-        base,
-        tyreScore,
-        deductions: activeDeds,
-        total,
-        createdAt:new Date()
-      });
-
-      setCar("");
-      setScores({});
-      setDeductions({});
-      setTyres({left:false,right:false});
+    const payload = {
+      judge,
+      car,
+      driver,
+      rego,
+      carName,
+      gender,
+      carClass,
+      finalScore,
+      createdAt: new Date()
     };
 
-    return(
-      <div style={page}>
-        <h2>{eventName}</h2>
+    await addDoc(collection(db,"scores"), payload);
+    setData(prev => [...prev, payload]);
 
-        <input style={input}
-          placeholder="Car # / Rego"
-          value={car}
-          onChange={e=>setCar(e.target.value)}
-        />
+    setScores({});
+    setDeductions({});
+    setCar("");
+    setDriver("");
+    setRego("");
+    setCarName("");
+    setGender("");
+    setCarClass("");
+  }
 
-        <button onClick={()=>setGender("Male")} style={gender==="Male"?active:{}}>Male</button>
-        <button onClick={()=>setGender("Female")} style={gender==="Female"?active:{}}>Female</button>
+  function combineScores(){
+    let combined = {};
 
-        <div>
-          {classes.map(c=>(
-            <button key={c}
-              onClick={()=>setCarClass(c)}
-              style={carClass===c?active:{}}>
-              {c}
-            </button>
-          ))}
-        </div>
+    data.forEach(e=>{
+      let key = e.car || e.rego || "Unknown";
 
-        {categories.map(cat=>(
-          <div key={cat}>
-            <b>{cat}</b><br/>
-            {Array.from({length:21},(_,i)=>(
-              <button key={i}
-                onClick={()=>setScores(prev=>({...prev,[cat]:i}))}
-                style={scores[cat]===i?active:{}}>
-                {i}
-              </button>
-            ))}
+      if(!combined[key]){
+        combined[key] = {
+          car:e.car,
+          total:0,
+          carClass:e.carClass,
+          gender:e.gender
+        };
+      }
+
+      combined[key].total += e.finalScore;
+    });
+
+    return Object.values(combined);
+  }
+
+  function buildTop150(){
+    setTop150(
+      combineScores()
+        .sort((a,b)=>b.total-a.total)
+        .slice(0,150)
+    );
+    setScreen("top150");
+  }
+
+  // 🔐 LOGIN SCREEN
+  if (!loggedIn) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h2>Select Judge</h2>
+        {[1,2,3,4,5,6].map(j => (
+          <button
+            key={j}
+            onClick={() => {
+              setJudge(j);
+              setLoggedIn(true);
+            }}
+            style={{ margin: 10, padding: 20 }}
+          >
+            Judge {j}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  // 🏁 TOP 150
+  if(screen === "top150"){
+    return (
+      <div style={{padding:20}}>
+        <h2>Top 150</h2>
+        {top150.map((e,i)=>(
+          <div key={i}>
+            #{i+1} | {e.car} | {e.total}
           </div>
         ))}
+        <button onClick={()=>setScreen("judge")}>Back</button>
+      </div>
+    );
+  }
 
-        <div>
-          Tyres
-          <button onClick={()=>setTyres({...tyres,left:!tyres.left})}>L</button>
-          <button onClick={()=>setTyres({...tyres,right:!tyres.right})}>R</button>
-        </div>
+  // 🎯 MAIN SCORING
+  return (
+    <div style={{padding:20}}>
 
-        <div>
-          {deductionsList.map(d=>(
-            <button key={d}
-              onClick={()=>setDeductions(prev=>({...prev,[d]:!prev[d]}))}>
-              {d}
-            </button>
+      <h2>Judge {judge}</h2>
+
+      <input placeholder="Car #" value={car} onChange={e=>setCar(e.target.value)} />
+      <input placeholder="Driver" value={driver} onChange={e=>setDriver(e.target.value)} />
+      <input placeholder="Rego" value={rego} onChange={e=>setRego(e.target.value)} />
+      <input placeholder="Car Name" value={carName} onChange={e=>setCarName(e.target.value)} />
+
+      <div>
+        <button onClick={()=>setGender("Male")}>Male</button>
+        <button onClick={()=>setGender("Female")}>Female</button>
+      </div>
+
+      <div>
+        {classes.map(c=>(
+          <button key={c} onClick={()=>setCarClass(c)}>{c}</button>
+        ))}
+      </div>
+
+      {categories.map(cat=>(
+        <div key={cat}>
+          <strong>{cat}</strong><br/>
+          {Array.from({length:21},(_,i)=>(
+            <button key={i} onClick={()=>setScore(cat,i)}>{i}</button>
           ))}
         </div>
+      ))}
 
-        <button style={bigBtn} onClick={submit}>Submit</button>
-        <button style={bigBtn} onClick={()=>setScreen("home")}>Home</button>
-      </div>
-    );
-  }
-
-  // ================= LEADERBOARD =================
-  function Leaderboard(){
-    return(
-      <div style={page}>
-        {entries
-          .filter(e=>e.eventName===eventName)
-          .sort((a,b)=>b.total-a.total)
-          .map((e,i)=>(
-            <div key={i}>
-              #{i+1} | {e.car} ({e.gender==="Female"?"F":"M"}) | {e.carClass} |
-              {e.base} +{e.tyreScore || 0} - ({e.deductions?.join(",")}) {e.total}
-            </div>
+      <div>
+        {deductionsList.map(d=>(
+          <button key={d} onClick={()=>toggleDeduction(d)}>{d}</button>
         ))}
-        <button style={bigBtn} onClick={()=>setScreen("home")}>Home</button>
       </div>
-    );
-  }
 
-  // ================= HOME =================
-  if(screen==="home"){
-    return(
-      <div style={page}>
-        <h1>🔥 AUTOFEST 🔥</h1>
+      <button onClick={submit}>Submit Score</button>
+      <button onClick={buildTop150}>Top 150</button>
 
-        <button style={bigBtn} onClick={()=>setScreen("judge")}>Judge Login</button>
-        <button style={bigBtn} onClick={()=>setScreen("score")}>Resume Judging</button>
-        <button style={bigBtn} onClick={()=>setScreen("leader")}>Leaderboard</button>
-
-        <button style={bigBtn} onClick={logout}>Logout</button>
-      </div>
-    );
-  }
-
-  if(screen==="judge"){
-    return(
-      <div style={page}>
-        <input style={input}
-          placeholder="Event Name"
-          value={eventName}
-          onChange={async e=>{
-            setEventName(e.target.value);
-            await loadEvent(e.target.value);
-          }}
-        />
-
-        {!eventLocked && <button style={bigBtn} onClick={lockEvent}>Lock Event</button>}
-
-        <button style={bigBtn} onClick={()=>setScreen("score")}>Start</button>
-        <button style={bigBtn} onClick={()=>setScreen("home")}>Home</button>
-      </div>
-    );
-  }
-
-  if(screen==="score") return <ScoreScreen />;
-  if(screen==="leader") return <Leaderboard />;
-
-  return <div style={page}>Loading...</div>;
+    </div>
+  );
 }
  
