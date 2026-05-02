@@ -9,24 +9,27 @@ const categories = [
   "Driver Skill"
 ];
 
-// 🔥 SEPARATE SCORE COMPONENT (clean reset via key)
 function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard }) {
   const [car, setCar] = useState("");
   const [scores, setScores] = useState({});
+  const [saving, setSaving] = useState(false); // 🔥 KEY FIX
 
   const btn = { padding: 10, margin: 5 };
   const active = { ...btn, background: "red", color: "#fff" };
 
   const submit = async () => {
-    console.log("SUBMIT CLICKED");
+
+    if (saving) return; // 🔥 BLOCK DOUBLE CLICK
 
     if (!eventName) return alert("No event started");
     if (!activeJudge) return alert("No judge selected");
     if (!car) return alert("Enter Car #");
 
-    try {
-      const total = Object.values(scores).reduce((a, b) => a + b, 0);
+    setSaving(true); // 🔥 LOCK BUTTON
 
+    const total = Object.values(scores).reduce((a, b) => a + b, 0);
+
+    try {
       await addDoc(collection(db, "scores"), {
         eventName,
         car,
@@ -35,9 +38,7 @@ function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard }) {
         createdAt: new Date()
       });
 
-      alert("Saved ✅");
-
-      // 🔥 HARD RESET (works 100%)
+      // 🔥 RESET IMMEDIATELY
       setCar("");
       setScores({});
 
@@ -45,6 +46,8 @@ function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard }) {
       console.error(err);
       alert("Error saving");
     }
+
+    setSaving(false); // 🔥 UNLOCK AFTER COMPLETE
   };
 
   return (
@@ -74,7 +77,13 @@ function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard }) {
 
       <br />
 
-      <button onClick={submit}>Submit</button>
+      <button 
+        onClick={submit}
+        disabled={saving} // 🔥 BUTTON DISABLED
+      >
+        {saving ? "Saving..." : "Submit"}
+      </button>
+
       <button onClick={onLeaderboard}>Leaderboard</button>
       <button onClick={onBackHome}>Home</button>
     </div>
@@ -90,14 +99,9 @@ export default function App() {
 
   const [entries, setEntries] = useState([]);
 
-  // 🔥 THIS KEY FORCES FULL SCORE RESET
-  const [scoreKey, setScoreKey] = useState(0);
-
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "scores"), snap => {
-      const data = snap.docs.map(d => d.data());
-      console.log("LIVE DATA:", data);
-      setEntries(data);
+      setEntries(snap.docs.map(d => d.data()));
     });
     return () => unsub();
   }, []);
@@ -112,7 +116,6 @@ export default function App() {
     setScreen("judge");
   };
 
-  // HOME
   if (screen === "home") {
     return (
       <div style={{ padding: 20 }}>
@@ -125,7 +128,6 @@ export default function App() {
     );
   }
 
-  // SETUP
   if (screen === "setup") {
     return (
       <div style={{ padding: 20 }}>
@@ -156,7 +158,6 @@ export default function App() {
     );
   }
 
-  // JUDGE
   if (screen === "judge") {
     return (
       <div style={{ padding: 20 }}>
@@ -167,7 +168,6 @@ export default function App() {
             key={i}
             onClick={() => {
               setActiveJudge(j);
-              setScoreKey(prev => prev + 1); // 🔥 force new score screen
               setScreen("score");
             }}
           >
@@ -180,11 +180,9 @@ export default function App() {
     );
   }
 
-  // SCORE (🔥 KEY IS THE FIX)
   if (screen === "score") {
     return (
       <ScoreScreen
-        key={scoreKey}
         eventName={eventName}
         activeJudge={activeJudge}
         onBackHome={() => setScreen("home")}
@@ -193,7 +191,6 @@ export default function App() {
     );
   }
 
-  // LEADERBOARD
   if (screen === "leader") {
     return (
       <div style={{ padding: 20 }}>
