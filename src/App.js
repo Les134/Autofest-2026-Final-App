@@ -35,7 +35,6 @@ export default function App(){
   const [eventName,setEventName] = useState("");
   const [judgeName,setJudgeName] = useState("");
   const [judge,setJudge] = useState("");
-  const [eventLocked,setEventLocked] = useState(false);
 
   const [car,setCar] = useState("");
   const [gender,setGender] = useState("");
@@ -109,6 +108,34 @@ export default function App(){
 
   const overall = combineScores();
 
+  // STYLES (THIS FIXES YOUR UI ISSUE)
+  const row = {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginBottom: "18px"
+  };
+
+  const scoreBtn = {
+    width: "48px",
+    height: "48px",
+    background: "#333",
+    color: "#fff",
+    border: "1px solid #555",
+    fontSize: "16px"
+  };
+
+  const activeBtn = (active) => ({
+    ...scoreBtn,
+    background: active ? "#e53935" : "#333"
+  });
+
+  const sectionTitle = {
+    marginTop: "15px",
+    marginBottom: "6px",
+    fontWeight: "bold"
+  };
+
   const menuBtn = {
     width:"100%",
     padding:"16px",
@@ -117,7 +144,7 @@ export default function App(){
     color:"#fff"
   };
 
-  // HOME (MATCH YOUR SCREENSHOT)
+  // HOME
   if(screen==="home"){
     return (
       <div style={{padding:20}}>
@@ -126,15 +153,11 @@ export default function App(){
         <button style={menuBtn} onClick={()=>setScreen("login")}>Judge Login</button>
         <button style={menuBtn} onClick={()=>setScreen("score")}>Resume Judging</button>
         <button style={menuBtn} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
-        <button style={menuBtn}>Class Leaderboard</button>
-        <button style={menuBtn}>Female Overall</button>
-        <button style={menuBtn}>Top 150</button>
-        <button style={menuBtn}>Top 30 Finals</button>
       </div>
     );
   }
 
-  // LOGIN SCREEN (FIXED FLOW)
+  // LOGIN
   if(screen==="login"){
     return (
       <div style={{padding:20}}>
@@ -180,7 +203,7 @@ export default function App(){
     );
   }
 
-  // SCORE SCREEN (MATCHES YOUR IMAGE)
+  // SCORE SCREEN (FULL + FIXED UI)
   if(screen==="score"){
     return (
       <div style={{padding:20}}>
@@ -194,23 +217,30 @@ export default function App(){
           onChange={e=>setCar(e.target.value)}
         />
 
-        <div>
-          <button onClick={()=>setGender("Male")}>Male</button>
-          <button onClick={()=>setGender("Female")}>Female</button>
+        <div style={row}>
+          <button style={activeBtn(gender==="Male")} onClick={()=>setGender("Male")}>Male</button>
+          <button style={activeBtn(gender==="Female")} onClick={()=>setGender("Female")}>Female</button>
         </div>
 
-        <div>
+        <div style={row}>
           {classes.map(c=>(
-            <button key={c} onClick={()=>setCarClass(c)}>{c}</button>
+            <button key={c} style={activeBtn(carClass===c)} onClick={()=>setCarClass(c)}>
+              {c}
+            </button>
           ))}
         </div>
 
         {categories.map(cat=>(
           <div key={cat}>
-            <div>{cat}</div>
-            <div style={{display:"flex",flexWrap:"wrap"}}>
+            <div style={sectionTitle}>{cat}</div>
+
+            <div style={row}>
               {[...Array(20)].map((_,i)=>(
-                <button key={i} onClick={()=>setScore(cat,i+1)}>
+                <button
+                  key={i}
+                  style={activeBtn(scores[cat]===i+1)}
+                  onClick={()=>setScore(cat,i+1)}
+                >
                   {i+1}
                 </button>
               ))}
@@ -218,14 +248,18 @@ export default function App(){
           </div>
         ))}
 
-        <div>
-          <button onClick={()=>setTyres("Left")}>Left</button>
-          <button onClick={()=>setTyres("Right")}>Right</button>
+        <div style={sectionTitle}>Tyres (+5)</div>
+        <div style={row}>
+          <button style={activeBtn(tyres==="Left")} onClick={()=>setTyres("Left")}>Left</button>
+          <button style={activeBtn(tyres==="Right")} onClick={()=>setTyres("Right")}>Right</button>
         </div>
 
-        <div>
+        <div style={sectionTitle}>Deductions (-10)</div>
+        <div style={row}>
           {deductionsList.map(d=>(
-            <button key={d} onClick={()=>toggleDeduction(d)}>{d}</button>
+            <button key={d} style={activeBtn(deductions[d])} onClick={()=>toggleDeduction(d)}>
+              {d}
+            </button>
           ))}
         </div>
 
@@ -236,7 +270,7 @@ export default function App(){
     );
   }
 
-  // LEADERBOARD (SIMPLE — SAME STYLE AS YOURS)
+  // LEADERBOARD
   return (
     <div style={{padding:20}}>
       <h2>Leaderboard</h2>
