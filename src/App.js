@@ -9,10 +9,18 @@ const categories = [
   "Driver Skill"
 ];
 
+const classes = [
+  "V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl / Rotary"
+];
+
+const deductionsList = ["Reversing","Stopping","Barrier","Fire"];
+
 // ================= SCORE SCREEN =================
 function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard, onReset }) {
   const [car, setCar] = useState("");
+  const [carClass, setCarClass] = useState("");
   const [scores, setScores] = useState({});
+  const [deductions, setDeductions] = useState({});
   const [saving, setSaving] = useState(false);
 
   const btn = { padding: 10, margin: 5 };
@@ -28,18 +36,23 @@ function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard, onRese
 
     setSaving(true);
 
-    const total = Object.values(scores).reduce((a, b) => a + b, 0);
+    const base = Object.values(scores).reduce((a,b)=>a+b,0);
+    const activeDeds = Object.keys(deductions).filter(d=>deductions[d]);
+    const deductionTotal = activeDeds.length * 10;
+
+    const total = base - deductionTotal;
 
     try {
       await addDoc(collection(db, "scores"), {
         eventName,
         car,
+        carClass,
         judge: activeJudge,
         total,
+        deductions: activeDeds,
         createdAt: new Date()
       });
 
-      // 🔥 THIS FORCES A BRAND NEW CLEAN SCORE SCREEN
       onReset();
 
     } catch (err) {
@@ -59,6 +72,18 @@ function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard, onRese
         onChange={(e) => setCar(e.target.value)}
       />
 
+      <div>
+        {classes.map(c => (
+          <button
+            key={c}
+            style={carClass===c ? active : btn}
+            onClick={()=>setCarClass(c)}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
       {categories.map(cat => (
         <div key={cat}>
           <strong>{cat}</strong><br />
@@ -73,6 +98,19 @@ function ScoreScreen({ eventName, activeJudge, onBackHome, onLeaderboard, onRese
           ))}
         </div>
       ))}
+
+      <div>
+        <h4>Deductions</h4>
+        {deductionsList.map(d => (
+          <button
+            key={d}
+            style={deductions[d] ? active : btn}
+            onClick={()=>setDeductions({...deductions,[d]:!deductions[d]})}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
 
       <br />
 
@@ -95,15 +133,13 @@ export default function App() {
   const [activeJudge, setActiveJudge] = useState("");
 
   const [entries, setEntries] = useState([]);
-
-  // 🔥 THIS KEY IS THE SECRET TO RESETTING THE FORM
   const [scoreKey, setScoreKey] = useState(0);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "scores"), snap => {
-      setEntries(snap.docs.map(d => d.data()));
+      setEntries(snap.docs.map(d=>d.data()));
     });
-    return () => unsub();
+    return ()=>unsub();
   }, []);
 
   const startEvent = () => {
@@ -116,20 +152,20 @@ export default function App() {
     setScreen("judge");
   };
 
-  // ================= HOME =================
+  // HOME
   if (screen === "home") {
     return (
       <div style={{ padding: 20 }}>
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        <button onClick={() => setScreen("setup")}>New Event</button>
-        <button onClick={() => setScreen("judge")}>Judge Login</button>
-        <button onClick={() => setScreen("leader")}>Leaderboard</button>
+        <button onClick={()=>setScreen("setup")}>New Event</button>
+        <button onClick={()=>setScreen("judge")}>Judge Login</button>
+        <button onClick={()=>setScreen("leader")}>Leaderboard</button>
       </div>
     );
   }
 
-  // ================= SETUP =================
+  // SETUP
   if (screen === "setup") {
     return (
       <div style={{ padding: 20 }}>
@@ -138,83 +174,77 @@ export default function App() {
         <input
           placeholder="Event Name"
           value={eventName}
-          onChange={(e) => setEventName(e.target.value)}
+          onChange={(e)=>setEventName(e.target.value)}
         />
 
-        {judges.map((j, i) => (
-          <input
-            key={i}
-            placeholder={`Judge ${i + 1}`}
+        {judges.map((j,i)=>(
+          <input key={i}
+            placeholder={`Judge ${i+1}`}
             value={judges[i]}
-            onChange={(e) => {
-              const copy = [...judges];
-              copy[i] = e.target.value;
+            onChange={(e)=>{
+              const copy=[...judges];
+              copy[i]=e.target.value;
               setJudges(copy);
             }}
           />
         ))}
 
         <button onClick={startEvent}>Start Event</button>
-        <button onClick={() => setScreen("home")}>Back</button>
+        <button onClick={()=>setScreen("home")}>Back</button>
       </div>
     );
   }
 
-  // ================= JUDGE =================
+  // JUDGE
   if (screen === "judge") {
     return (
       <div style={{ padding: 20 }}>
         <h2>Select Judge</h2>
 
-        {judges.map((j, i) => (
-          <button
-            key={i}
-            onClick={() => {
-              setActiveJudge(j);
-              setScreen("score");
-            }}
-          >
-            {j || `Judge ${i + 1}`}
+        {judges.map((j,i)=>(
+          <button key={i}
+            onClick={()=>{setActiveJudge(j);setScreen("score")}}>
+            {j}
           </button>
         ))}
 
-        <button onClick={() => setScreen("home")}>Back</button>
+        <button onClick={()=>setScreen("home")}>Back</button>
       </div>
     );
   }
 
-  // ================= SCORE =================
+  // SCORE
   if (screen === "score") {
     return (
       <ScoreScreen
         key={scoreKey}
         eventName={eventName}
         activeJudge={activeJudge}
-        onBackHome={() => setScreen("home")}
-        onLeaderboard={() => setScreen("leader")}
-        onReset={() => {
-          // 🔥 THIS CREATES A BRAND NEW CLEAN FORM
-          setScoreKey(prev => prev + 1);
-        }}
+        onBackHome={()=>setScreen("home")}
+        onLeaderboard={()=>setScreen("leader")}
+        onReset={()=>setScoreKey(prev=>prev+1)}
       />
     );
   }
 
-  // ================= LEADERBOARD =================
+  // 🔥 LEADERBOARD (FIXED)
   if (screen === "leader") {
     return (
       <div style={{ padding: 20 }}>
         <h2>🏆 Leaderboard</h2>
 
         {entries
-          .sort((a, b) => b.total - a.total)
-          .map((e, i) => (
-            <div key={i}>
-              #{i + 1} | Car {e.car} | {e.total}
+          .sort((a,b)=>b.total-a.total)
+          .map((e,i)=>(
+            <div key={i} style={{padding:10,borderBottom:"1px solid #ccc"}}>
+              #{i+1} | Car {e.car} | {e.carClass || "-"} | {e.total}
+              {e.deductions?.length > 0 && (
+                <span> – ({e.deductions.join(", ")})</span>
+              )}
             </div>
           ))}
 
-        <button onClick={() => setScreen("home")}>Back</button>
+        <button onClick={()=>setScreen("home")}>Back</button>
       </div>
     );
   }
