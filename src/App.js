@@ -31,7 +31,6 @@ const deductionsList = ["Reversing", "Stopping", "Barrier", "Fire"];
 const page = { background:"#111", color:"#fff", minHeight:"100vh", padding:20 };
 const bigBtn = { width:"100%", padding:18, margin:"6px 0", background:"#222", color:"#fff" };
 
-// 🔥 scoresheet buttons (slightly larger)
 const scoreBtn = {
   padding: "12px",
   margin: "2px",
@@ -133,13 +132,11 @@ export default function App(){
           style={{width:"100%",padding:14,fontSize:18,marginBottom:10}}
         />
 
-        {/* Gender */}
         <div>
           <button style={{...selectBtn, ...(gender==="Male"?active:{})}} onClick={()=>setGender("Male")}>Male</button>
           <button style={{...selectBtn, ...(gender==="Female"?active:{})}} onClick={()=>setGender("Female")}>Female</button>
         </div>
 
-        {/* Classes */}
         <div>
           {classes.map(c=>(
             <button key={c}
@@ -150,7 +147,6 @@ export default function App(){
           ))}
         </div>
 
-        {/* 🔥 SCORES - ONE LINE */}
         {categories.map(cat=>(
           <div key={cat}>
             <h4>{cat}</h4>
@@ -166,14 +162,12 @@ export default function App(){
           </div>
         ))}
 
-        {/* Tyres */}
         <div>
           <h4>Tyres (+5)</h4>
           <button style={{...selectBtn, ...(tyres.left?active:{})}} onClick={()=>setTyres({...tyres,left:!tyres.left})}>Left</button>
           <button style={{...selectBtn, ...(tyres.right?active:{})}} onClick={()=>setTyres({...tyres,right:!tyres.right})}>Right</button>
         </div>
 
-        {/* Deductions */}
         <div>
           <h4>Deductions (-10)</h4>
           {deductionsList.map(d=>(
@@ -200,6 +194,8 @@ export default function App(){
     if(type==="top150") list = [...list].sort((a,b)=>b.total-a.total).slice(0,150);
     if(type==="top30") list = [...list].sort((a,b)=>b.total-a.total).slice(0,30);
 
+    const genderTag = g => g === "Female" ? "F" : "M";
+
     if(type==="class"){
       return(
         <div style={page}>
@@ -211,7 +207,7 @@ export default function App(){
                 .sort((a,b)=>b.total-a.total)
                 .map((e,i)=>(
                   <div key={i}>
-                    #{i+1} | {e.car} | {e.carClass} | {e.base} - ({e.deductions?.join(",")}) {e.total}
+                    #{i+1} | {e.car} ({genderTag(e.gender)}) | {e.carClass} | {e.base} - ({e.deductions?.join(",")}) {e.total}
                   </div>
               ))}
             </div>
@@ -227,7 +223,7 @@ export default function App(){
           .sort((a,b)=>b.total-a.total)
           .map((e,i)=>(
             <div key={i}>
-              #{i+1} | {e.car} | {e.carClass} | {e.base} - ({e.deductions?.join(",")}) {e.total}
+              #{i+1} | {e.car} ({genderTag(e.gender)}) | {e.carClass} | {e.base} - ({e.deductions?.join(",")}) {e.total}
             </div>
         ))}
         <button style={bigBtn} onClick={()=>setScreen("home")}>Home</button>
