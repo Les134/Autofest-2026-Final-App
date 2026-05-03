@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { db } from "./firebase";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  deleteDoc,
+  setDoc
+} from "firebase/firestore";
 
 export default function App() {
 
@@ -11,7 +18,12 @@ export default function App() {
   const [eventName, setEventName] = useState("");
   const [judge, setJudge] = useState("");
 
+  const [newEvent, setNewEvent] = useState("");
+  const [newJudges, setNewJudges] = useState("");
+
   const [car, setCar] = useState("");
+  const [driverName, setDriverName] = useState("");
+
   const [gender, setGender] = useState("");
   const [carClass, setCarClass] = useState("");
 
@@ -36,11 +48,14 @@ export default function App() {
     const snap = await getDocs(collection(db, "events"));
     const list = [];
 
-    snap.forEach(doc => {
-      list.push({
-        id: doc.id,
-        judges: doc.data().judges || []
-      });
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.judges && Array.isArray(data.judges)) {
+        list.push({
+          id: d.id,
+          judges: data.judges
+        });
+      }
     });
 
     setEvents(list);
@@ -51,49 +66,13 @@ export default function App() {
   }, [screen]);
 
   const styles = {
-    container: {
-      background: "#0b0f1a",
-      color: "#fff",
-      minHeight: "100vh",
-      padding: "15px",
-      fontFamily: "Arial"
-    },
-    button: {
-      width: "100%",
-      padding: "14px",
-      margin: "6px 0",
-      background: "#1c2333",
-      border: "1px solid #2f3a55",
-      color: "#fff",
-      fontSize: "16px"
-    },
-    row: {
-      display: "flex",
-      gap: "6px"
-    },
-    scoreRow: {
-      display: "flex",
-      overflowX: "auto"
-    },
-    scoreBtn: {
-      padding: "10px",
-      margin: "2px",
-      minWidth: "36px",
-      background: "#1c2333",
-      border: "1px solid #2f3a55",
-      color: "#fff"
-    },
-    activeBtn: {
-      background: "#ff6b00"
-    },
-    input: {
-      width: "100%",
-      padding: "12px",
-      margin: "10px 0",
-      background: "#111827",
-      border: "1px solid #2f3a55",
-      color: "#fff"
-    }
+    container:{background:"#0b0f1a",color:"#fff",minHeight:"100vh",padding:"15px"},
+    button:{width:"100%",padding:"14px",margin:"6px 0",background:"#1c2333",border:"1px solid #2f3a55",color:"#fff"},
+    active:{background:"#ff6b00"},
+    row:{display:"flex",gap:"6px"},
+    scoreRow:{display:"flex",overflowX:"auto"},
+    scoreBtn:{padding:"14px",margin:"3px",minWidth:"42px",background:"#1c2333",border:"1px solid #2f3a55",color:"#fff"},
+    input:{width:"100%",padding:"10px",margin:"6px 0",background:"#111827",border:"1px solid #2f3a55",color:"#fff"}
   };
 
   // HOME
@@ -101,50 +80,70 @@ export default function App() {
     return (
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
-        <button style={styles.button} onClick={() => goTo("judgeLogin")}>
-          Judge Login
-        </button>
+
+        <button style={styles.button} onClick={()=>goTo("judgeLogin")}>Judge Login</button>
+        <button style={styles.button}>Leaderboard</button>
+        <button style={styles.button}>Class Leaderboard</button>
+        <button style={styles.button}>Female Overall</button>
+        <button style={styles.button}>Top 150</button>
+        <button style={styles.button}>Top 30 Finals</button>
       </div>
     );
   }
 
-  // ✅ FIXED JUDGE LOGIN (ONLY CHANGE)
+  // JUDGE LOGIN + ADMIN
   if (screen === "judgeLogin") {
     return (
       <div style={styles.container}>
+
+        <h2>Add Event</h2>
+        <input style={styles.input} placeholder="Event Name" value={newEvent} onChange={e=>setNewEvent(e.target.value)} />
+        <input style={styles.input} placeholder="Judges (comma separated)" value={newJudges} onChange={e=>setNewJudges(e.target.value)} />
+
+        <button style={styles.button} onClick={async ()=>{
+          if(!newEvent || !newJudges) return alert("Enter event + judges");
+
+          await setDoc(doc(db,"events",newEvent),{
+            judges:newJudges.split(",").map(j=>j.trim())
+          });
+
+          setNewEvent("");
+          setNewJudges("");
+          loadEvents();
+        }}>
+          Add Event
+        </button>
+
         <h2>Select Event</h2>
 
-        {events.map((e, i) => (
-          <button
-            key={i}
-            style={styles.button}
-            onClick={() => {
+        {events.map((e,i)=>(
+          <div key={i}>
+            <button style={styles.button} onClick={()=>{
               setEventName(e.id);
-              setJudges([...e.judges]); // 🔥 FIX
-            }}
-          >
-            {e.id}
-          </button>
+              setJudges([...e.judges]);
+            }}>
+              {e.id}
+            </button>
+
+            <button onClick={async ()=>{
+              if(window.confirm("Delete event?")){
+                await deleteDoc(doc(db,"events",e.id));
+                loadEvents();
+              }
+            }}>Delete</button>
+          </div>
         ))}
 
         {eventName && <h3>Select Judge</h3>}
 
-        {judges.length > 0 && judges.map((j, i) => (
-          <button
-            key={i}
-            style={styles.button}
-            onClick={() => {
-              setJudge(j);
-              goTo("score");
-            }}
-          >
+        {judges.map((j,i)=>(
+          <button key={i} style={styles.button} onClick={()=>{setJudge(j);goTo("score");}}>
             {j}
           </button>
         ))}
 
-        <button style={styles.button} onClick={() => goTo("home")}>
-          Home
-        </button>
+        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
+
       </div>
     );
   }
@@ -157,51 +156,112 @@ export default function App() {
         <h2>{eventName}</h2>
         <h3>{judge}</h3>
 
-        <input
-          style={styles.input}
-          placeholder="Car # / Rego"
-          value={car}
-          onChange={(e) => setCar(e.target.value)}
-        />
+        <input style={styles.input} placeholder="Car # / Rego" value={car} onChange={e=>setCar(e.target.value)} />
+        <input style={styles.input} placeholder="Driver Name" value={driverName} onChange={e=>setDriverName(e.target.value)} />
 
+        {/* GENDER */}
         <div style={styles.row}>
-          <button style={styles.button} onClick={() => setGender("Male")}>Male</button>
-          <button style={styles.button} onClick={() => setGender("Female")}>Female</button>
+          <button style={{...styles.button,...(gender==="Male"?styles.active:{})}} onClick={()=>setGender("Male")}>Male</button>
+          <button style={{...styles.button,...(gender==="Female"?styles.active:{})}} onClick={()=>setGender("Female")}>Female</button>
         </div>
 
+        {/* CLASS */}
         <div>
-          {classes.map(c => (
-            <button key={c} style={styles.scoreBtn} onClick={() => setCarClass(c)}>
+          {classes.map(c=>(
+            <button key={c}
+              style={{...styles.scoreBtn,...(carClass===c?styles.active:{})}}
+              onClick={()=>setCarClass(c)}>
               {c}
             </button>
           ))}
         </div>
 
-        {categories.map(cat => (
+        {/* SCORES */}
+        {categories.map(cat=>(
           <div key={cat}>
             <p>{cat}</p>
             <div style={styles.scoreRow}>
-              {[...Array(20)].map((_, i) => (
-                <button
-                  key={i}
-                  style={{
-                    ...styles.scoreBtn,
-                    ...(scores[cat] === i + 1 ? styles.activeBtn : {})
-                  }}
-                  onClick={() =>
-                    setScores(prev => ({ ...prev, [cat]: i + 1 }))
-                  }
-                >
-                  {i + 1}
+              {[...Array(20)].map((_,i)=>(
+                <button key={i}
+                  style={{...styles.scoreBtn,...(scores[cat]===i+1?styles.active:{})}}
+                  onClick={()=>setScores(prev=>({...prev,[cat]:i+1}))}>
+                  {i+1}
                 </button>
               ))}
             </div>
           </div>
         ))}
 
-        <button style={styles.button} onClick={() => goTo("home")}>
-          Home
+        {/* TYRES */}
+        <p>Tyres (+5)</p>
+        <div style={styles.row}>
+          <button
+            style={{...styles.button,...(tyres>=5?styles.active:{})}}
+            onClick={()=>setTyres(prev=>prev>=5?prev-5:5)}>
+            Left
+          </button>
+
+          <button
+            style={{...styles.button,...(tyres===10?styles.active:{})}}
+            onClick={()=>setTyres(prev=>prev===10?5:10)}>
+            Right
+          </button>
+        </div>
+
+        {/* DEDUCTIONS */}
+        <p>Deductions (-10)</p>
+        <div style={styles.row}>
+          {["Reversing","Stopping","Barrier","Fire"].map(d=>(
+            <button key={d}
+              style={{...styles.button,...(deductions.includes(d)?styles.active:{})}}
+              onClick={()=>setDeductions(prev=>
+                prev.includes(d)?prev.filter(x=>x!==d):[...prev,d]
+              )}>
+              {d}
+            </button>
+          ))}
+        </div>
+
+        {/* TOTAL */}
+        <h3>
+          Total: {
+            Object.values(scores).reduce((a,b)=>a+b,0)
+            + tyres
+            - deductions.length*10
+          }
+        </h3>
+
+        {/* SUBMIT */}
+        <button style={styles.button} onClick={async ()=>{
+          await addDoc(collection(db,"scores"),{
+            event:eventName,
+            judge,
+            car,
+            driverName,
+            gender,
+            carClass,
+            scores,
+            tyres,
+            deductions,
+            total:
+              Object.values(scores).reduce((a,b)=>a+b,0)
+              + tyres
+              - deductions.length*10
+          });
+
+          alert("Saved");
+
+          setScores({});
+          setTyres(0);
+          setDeductions([]);
+          setCar("");
+          setDriverName("");
+
+        }}>
+          Submit
         </button>
+
+        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
 
       </div>
     );
