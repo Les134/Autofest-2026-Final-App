@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { db } from "./firebase";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc } from "firebase/firestore";
 
 export default function App() {
 
@@ -40,24 +40,28 @@ export default function App() {
     if (judge) localStorage.setItem("judge", judge);
   }, [judge]);
 
+  // ✅ FIXED JUDGE LOAD (direct doc lookup)
   async function loadEvent(event) {
-    const snap = await getDocs(collection(db, "events"));
-    let found = false;
+    if (!event) return alert("Enter event name");
 
-    snap.forEach(d => {
-      if (d.id.toLowerCase() === event.toLowerCase()) {
-        setJudges(d.data().judges || []);
-        found = true;
+    try {
+      const ref = doc(db, "events", event);
+      const snap = await getDoc(ref);
+
+      if (snap.exists()) {
+        const data = snap.data();
+        setJudges(data.judges || []);
+      } else {
+        alert("Event not found");
+        setJudges([]);
       }
-    });
 
-    if (!found) {
-      alert("Event not found");
-      setJudges([]);
+    } catch (err) {
+      console.error(err);
+      alert("Error loading event");
     }
   }
 
-  // ================= STYLES =================
   const styles = {
     container: {
       background: "#0b0f1a",
@@ -75,6 +79,10 @@ export default function App() {
       color: "#fff",
       fontSize: "16px",
       cursor: "pointer"
+    },
+    row: {
+      display: "flex",
+      gap: "6px"
     },
     scoreRow: {
       display: "flex",
@@ -104,20 +112,14 @@ export default function App() {
     }
   };
 
-  // ================= HOME =================
+  // HOME
   if (screen === "home") {
     return (
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        <button style={styles.button} onClick={() => goTo("judgeLogin")}>
-          Judge Login
-        </button>
-
-        <button style={styles.button} onClick={() => goTo("score")}>
-          Resume Judging
-        </button>
-
+        <button style={styles.button} onClick={() => goTo("judgeLogin")}>Judge Login</button>
+        <button style={styles.button} onClick={() => goTo("score")}>Resume Judging</button>
         <button style={styles.button}>Leaderboard</button>
         <button style={styles.button}>Class Leaderboard</button>
         <button style={styles.button}>Female Overall</button>
@@ -127,7 +129,7 @@ export default function App() {
     );
   }
 
-  // ================= JUDGE LOGIN =================
+  // JUDGE LOGIN
   if (screen === "judgeLogin") {
     return (
       <div style={styles.container}>
@@ -160,7 +162,7 @@ export default function App() {
     );
   }
 
-  // ================= SCORE =================
+  // SCORE
   if (screen === "score") {
     return (
       <div style={styles.container}>
@@ -175,7 +177,8 @@ export default function App() {
           onChange={(e) => setCar(e.target.value)}
         />
 
-        <div>
+        {/* ✅ Male/Female same row */}
+        <div style={styles.row}>
           <button style={styles.button} onClick={() => setGender("Male")}>Male</button>
           <button style={styles.button} onClick={() => setGender("Female")}>Female</button>
         </div>
@@ -210,29 +213,46 @@ export default function App() {
           </div>
         ))}
 
-        {/* TYRES */}
-        <p>Tyres (+5)</p>
-        <button style={styles.button} onClick={() => setTyres(tyres === 5 ? 0 : 5)}>
-          {tyres === 5 ? "✔ Applied" : "Add Tyre Bonus"}
-        </button>
-
-        {/* DEDUCTIONS */}
-        <p>Deductions (-10 each)</p>
-        {["Reversing","Stopping","Barrier","Fire"].map(d => (
+        {/* ✅ TYRES (2 buttons) */}
+        <p>Tyres (+5 each)</p>
+        <div style={styles.row}>
           <button
-            key={d}
             style={styles.button}
-            onClick={() => {
-              setDeductions(prev =>
-                prev.includes(d)
-                  ? prev.filter(x => x !== d)
-                  : [...prev, d]
-              );
-            }}
+            onClick={() => setTyres(prev => prev === 5 ? 0 : 5)}
           >
-            {deductions.includes(d) ? "✔ " : ""}{d}
+            {tyres >= 5 ? "✔ Left +5" : "Left"}
           </button>
-        ))}
+
+          <button
+            style={styles.button}
+            onClick={() => setTyres(prev => prev === 10 ? 5 : 10)}
+          >
+            {tyres === 10 ? "✔ Right +5" : "Right"}
+          </button>
+        </div>
+
+        {/* ✅ DEDUCTIONS (one row) */}
+        <p>Deductions (-10 each)</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+          {["Reversing","Stopping","Barrier","Fire"].map(d => (
+            <button
+              key={d}
+              style={{
+                ...styles.button,
+                background: deductions.includes(d) ? "#ff0000" : "#1c2333"
+              }}
+              onClick={() => {
+                setDeductions(prev =>
+                  prev.includes(d)
+                    ? prev.filter(x => x !== d)
+                    : [...prev, d]
+                );
+              }}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
 
         <button style={styles.button} onClick={async () => {
 
