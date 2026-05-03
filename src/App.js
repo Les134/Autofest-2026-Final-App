@@ -5,7 +5,8 @@ import {
   getDocs,
   setDoc,
   updateDoc,
-  doc
+  doc,
+  getDoc
 } from "firebase/firestore";
 
 export default function App() {
@@ -29,6 +30,15 @@ export default function App() {
     const list = [];
     snap.forEach(d => list.push({ id:d.id, ...d.data() }));
     setEvents(list);
+  }
+
+  async function loadJudges(eventId){
+    if(!eventId) return;
+    const ref = doc(db,"events",eventId);
+    const snap = await getDoc(ref);
+    if(snap.exists()){
+      setJudges(snap.data().judges || []);
+    }
   }
 
   useEffect(() => {
@@ -58,7 +68,7 @@ export default function App() {
     );
   }
 
-  // ADMIN (SIMPLE + FIXED)
+  // ADMIN
   if (screen === "admin") {
     return (
       <div style={styles.container}>
@@ -92,15 +102,18 @@ export default function App() {
             />
 
             <button onClick={async ()=>{
-              if(!newEvent) return alert("Enter event name");
+              const clean = newEvent.trim();
 
-              await setDoc(doc(db,"events",newEvent),{
+              if(!clean) return alert("Enter event name");
+
+              await setDoc(doc(db,"events",clean),{
                 judges:[]
               });
 
-              setEventName(newEvent); // auto select it
+              setEventName(clean);
               setNewEvent("");
               loadEvents();
+              loadJudges(clean);
             }}>
               Create Event
             </button>
@@ -111,7 +124,7 @@ export default function App() {
               <button key={e.id}
                 onClick={()=>{
                   setEventName(e.id);
-                  setJudges(e.judges || []);
+                  loadJudges(e.id);
                 }}>
                 {e.id}
               </button>
@@ -127,21 +140,29 @@ export default function App() {
             />
 
             <button onClick={async ()=>{
-              if(!eventName) return alert("Select event first");
-              if(!newJudge) return alert("Enter judge name");
+              const cleanEvent = eventName.trim();
+              const cleanJudge = newJudge.trim();
 
-              const ev = events.find(e=>e.id === eventName);
+              if(!cleanEvent) return alert("Select event first");
+              if(!cleanJudge) return alert("Enter judge name");
 
-              if((ev?.judges || []).length >= 6){
+              const ref = doc(db,"events",cleanEvent);
+              const snap = await getDoc(ref);
+
+              if(!snap.exists()) return alert("Event not found");
+
+              const current = snap.data().judges || [];
+
+              if(current.length >= 6){
                 return alert("Max 6 judges");
               }
 
-              await updateDoc(doc(db,"events",eventName),{
-                judges:[...(ev?.judges || []), newJudge]
+              await updateDoc(ref,{
+                judges:[...current, cleanJudge]
               });
 
               setNewJudge("");
-              loadEvents();
+              loadJudges(cleanEvent); // 🔥 FORCE REFRESH
             }}>
               Add Judge
             </button>
@@ -156,7 +177,7 @@ export default function App() {
     );
   }
 
-  // JUDGE LOGIN (SUPER SIMPLE)
+  // JUDGE LOGIN
   if (screen === "judge") {
     return (
       <div style={styles.container}>
@@ -167,7 +188,7 @@ export default function App() {
           <button key={e.id}
             onClick={()=>{
               setEventName(e.id);
-              setJudges(e.judges || []);
+              loadJudges(e.id);
             }}>
             {e.id}
           </button>
