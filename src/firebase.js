@@ -2,12 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "REPLACE_WITH_YOURS",
+  apiKey: "AIzaSyCSCBgg7bR1FYMNqOZGJQwXDqe79eXyAAM",
   authDomain: "autofest-burnout-judging.firebaseapp.com",
   projectId: "autofest-burnout-judging",
-  storageBucket: "autofest-burnout-judging.appspot.com",
+  storageBucket: "autofest-burnout-judging.firebasestorage.app",
   messagingSenderId: "453347070025",
-  appId: "REPLACE_WITH_YOURS"
+  appId: "1:453347070025:web:0567bc51df8a0b49b46f98"
 };
 
 const app = initializeApp(firebaseConfig);
