@@ -1,17 +1,9 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
-  authDomain: "autofest-burnout-judging-848fd.firebaseapp.com",
-  projectId: "autofest-burnout-judging-848fd"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 import React, { useState, useEffect } from "react";
-import { db } from "./firebase";
+
+// FIREBASE (INLINE — NO EXTERNAL FILE)
+import { initializeApp } from "firebase/app";
 import {
+  getFirestore,
   collection,
   getDocs,
   setDoc,
@@ -20,6 +12,18 @@ import {
   doc,
   getDoc
 } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCSCBgg7bR1FYMNqOZGJQwXDqe79eXyAAM",
+  authDomain: "autofest-burnout-judging.firebaseapp.com",
+  projectId: "autofest-burnout-judging",
+  storageBucket: "autofest-burnout-judging.firebasestorage.app",
+  messagingSenderId: "453347070025",
+  appId: "1:453347070025:web:0567bc51df8a0b49b46f98"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 export default function App() {
 
@@ -37,6 +41,7 @@ export default function App() {
   const [newEvent, setNewEvent] = useState("");
   const [newJudge, setNewJudge] = useState("");
 
+  // LOAD EVENTS
   async function loadEvents() {
     const snap = await getDocs(collection(db, "events"));
     const list = [];
@@ -44,6 +49,7 @@ export default function App() {
     setEvents(list);
   }
 
+  // LOAD JUDGES FROM FIREBASE
   async function loadJudges(eventId) {
     if (!eventId) return;
     const ref = doc(db, "events", eventId);
@@ -61,23 +67,44 @@ export default function App() {
   }, []);
 
   const styles = {
-    container: { background: "#000", color: "#fff", minHeight: "100vh", padding: "15px" },
-    button: { width: "100%", padding: "14px", margin: "6px 0" },
-    input: { width: "100%", padding: "10px", margin: "6px 0" }
+    container: {
+      background: "#000",
+      color: "#fff",
+      minHeight: "100vh",
+      padding: "15px",
+      fontFamily: "Arial"
+    },
+    button: {
+      width: "100%",
+      padding: "14px",
+      margin: "6px 0",
+      fontSize: "16px"
+    },
+    input: {
+      width: "100%",
+      padding: "10px",
+      margin: "6px 0"
+    }
   };
 
-  // HOME
+  // ================= HOME =================
   if (screen === "home") {
     return (
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
-        <button style={styles.button} onClick={() => setScreen("judge")}>Judge Login</button>
-        <button style={styles.button} onClick={() => setScreen("admin")}>Admin Setup</button>
+
+        <button style={styles.button} onClick={() => setScreen("judge")}>
+          Judge Login
+        </button>
+
+        <button style={styles.button} onClick={() => setScreen("admin")}>
+          Admin Setup
+        </button>
       </div>
     );
   }
 
-  // ADMIN
+  // ================= ADMIN =================
   if (screen === "admin") {
     return (
       <div style={styles.container}>
@@ -191,7 +218,6 @@ export default function App() {
 
               await deleteDoc(doc(db, "events", eventName));
 
-              // 🔥 FIX: CLEAR + REFRESH
               setEventName("");
               setJudges([]);
               await loadEvents();
@@ -208,7 +234,7 @@ export default function App() {
     );
   }
 
-  // JUDGE LOGIN
+  // ================= JUDGE LOGIN =================
   if (screen === "judge") {
     return (
       <div style={styles.container}>
@@ -242,5 +268,8 @@ export default function App() {
       </div>
     );
   }
+
+  return null;
+}
 
     
