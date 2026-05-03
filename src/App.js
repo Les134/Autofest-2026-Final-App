@@ -1,3 +1,14 @@
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB5NhDJMBwhMpUUL3XIHUnISTuCeQkXKS8",
+  authDomain: "autofest-burnout-judging-848fd.firebaseapp.com",
+  projectId: "autofest-burnout-judging-848fd"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 import React, { useState, useEffect } from "react";
 import { db } from "./firebase";
 import {
