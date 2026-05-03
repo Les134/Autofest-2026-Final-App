@@ -1,13 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { db } from "./firebase";
 import {
   collection,
   getDocs,
-  addDoc,
-  query,
-  where,
-  setDoc,
-  doc
+  addDoc
 } from "firebase/firestore";
 
 export default function App() {
@@ -35,18 +31,32 @@ export default function App() {
 
   const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl / Rotary"];
 
-  // ✅ LOAD EVENT + JUDGES (FIX)
+  // ✅ FIXED EVENT LOAD (STRICT MATCH)
   async function loadEvent(event) {
+    if (!event) {
+      alert("Enter Event Name");
+      return;
+    }
+
     const snap = await getDocs(collection(db, "events"));
+
+    let found = false;
+
     snap.forEach(d => {
       if (d.id === event) {
         setJudges(d.data().judges || []);
+        found = true;
       }
     });
+
+    if (!found) {
+      alert("Event not found");
+      setJudges([]);
+    }
   }
 
   // =========================
-  // HOME
+  // HOME (UNCHANGED LAYOUT)
   // =========================
   if (screen === "home") {
     return (
@@ -58,7 +68,13 @@ export default function App() {
           Judge Login
         </button>
 
-        <button onClick={() => setScreen("score")}>
+        <button onClick={() => {
+          if (!judge) {
+            alert("Login as judge first");
+            return;
+          }
+          setScreen("score");
+        }}>
           Resume Judging
         </button>
 
@@ -101,20 +117,26 @@ export default function App() {
           onChange={(e) => setEventName(e.target.value)}
         />
 
-        <button onClick={async () => {
-          await loadEvent(eventName);
-        }}>
+        <button onClick={() => loadEvent(eventName)}>
           Load Judges
         </button>
+
+        {judges.length === 0 && (
+          <p>No judges loaded</p>
+        )}
 
         {judges.map((j, i) => (
           <button key={i} onClick={() => {
             setJudge(j);
-            setScreen("score"); // ✅ THIS WAS BROKEN BEFORE
+            setScreen("score"); // ✅ GUARANTEED NAVIGATION
           }}>
             {j}
           </button>
         ))}
+
+        <button onClick={() => setScreen("home")}>
+          Home
+        </button>
 
       </div>
     );
@@ -172,21 +194,36 @@ export default function App() {
             return;
           }
 
+          if (!car) {
+            alert("Enter car number");
+            return;
+          }
+
+          if (Object.keys(scores).length !== categories.length) {
+            alert("Complete all scores");
+            return;
+          }
+
           let total = Object.values(scores).reduce((a, b) => a + b, 0);
 
-          await addDoc(collection(db, "scores"), {
-            event: eventName,
-            judge,
-            car,
-            gender,
-            carClass,
-            total
-          });
+          try {
+            await addDoc(collection(db, "scores"), {
+              event: eventName,
+              judge,
+              car,
+              gender,
+              carClass,
+              total
+            });
 
-          alert("Submitted");
+            alert("Submitted");
 
-          setScores({});
-          setCar("");
+            setScores({});
+            setCar("");
+
+          } catch (err) {
+            alert("Error saving score");
+          }
 
         }}>
           Submit
