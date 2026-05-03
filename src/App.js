@@ -67,11 +67,11 @@ export default function App() {
 
   const styles = {
     container:{background:"#0b0f1a",color:"#fff",minHeight:"100vh",padding:"15px"},
-    button:{width:"100%",padding:"14px",margin:"6px 0",background:"#1c2333",border:"1px solid #2f3a55",color:"#fff"},
-    active:{background:"#ff6b00"},
+    button:{width:"100%",padding:"14px",margin:"6px 0",background:"#b00020",border:"1px solid #ff3b3b",color:"#fff"},
+    active:{background:"#ff0000"},
     row:{display:"flex",gap:"6px"},
     scoreRow:{display:"flex",overflowX:"auto"},
-    scoreBtn:{padding:"14px",margin:"3px",minWidth:"42px",background:"#1c2333",border:"1px solid #2f3a55",color:"#fff"},
+    scoreBtn:{padding:"14px",margin:"3px",minWidth:"42px",background:"#b00020",border:"1px solid #ff3b3b",color:"#fff"},
     input:{width:"100%",padding:"10px",margin:"6px 0",background:"#111827",border:"1px solid #2f3a55",color:"#fff"}
   };
 
@@ -85,7 +85,6 @@ export default function App() {
           Judge Login
         </button>
 
-        {/* ✅ NEW: Resume Judging */}
         <button
           style={styles.button}
           onClick={()=>{
@@ -108,7 +107,7 @@ export default function App() {
     );
   }
 
-  // JUDGE LOGIN + ADMIN
+  // JUDGE LOGIN
   if (screen === "judgeLogin") {
     return (
       <div style={styles.container}>
@@ -142,12 +141,18 @@ export default function App() {
               {e.id}
             </button>
 
-            <button onClick={async ()=>{
-              if(window.confirm("Delete event?")){
-                await deleteDoc(doc(db,"events",e.id));
-                loadEvents();
-              }
-            }}>Delete</button>
+            <button
+              type="button"
+              onClick={async (ev)=>{
+                ev.stopPropagation();
+                if(window.confirm("Delete event?")){
+                  await deleteDoc(doc(db,"events",e.id));
+                  loadEvents();
+                }
+              }}
+            >
+              Delete
+            </button>
           </div>
         ))}
 
@@ -235,44 +240,52 @@ export default function App() {
           }
         </h3>
 
-        {/* ✅ FIXED SUBMIT */}
-        <button style={styles.button} onClick={async ()=>{
-          if (!eventName || !judge) return alert("Missing event/judge");
-          if (!car) return alert("Enter car number");
-          if (Object.keys(scores).length !== 4) return alert("Complete all scores");
+        <button
+          type="button"
+          style={styles.button}
+          onClick={async (e) => {
 
-          try {
-            const total =
-              Object.values(scores).reduce((a,b)=>a+b,0)
-              + tyres
-              - deductions.length*10;
+            e.stopPropagation();
 
-            await addDoc(collection(db,"scores"),{
-              event:eventName,
-              judge,
-              car,
-              driverName,
-              gender,
-              carClass,
-              scores,
-              tyres,
-              deductions,
-              total
-            });
+            if (!eventName) return alert("Missing event");
+            if (!judge) return alert("Missing judge");
+            if (!car) return alert("Enter car number");
+            if (Object.keys(scores).length !== 4) return alert("Complete all scoring categories");
 
-            alert("Score submitted");
+            try {
+              const base = Object.values(scores).reduce((a,b)=>a+b,0);
+              const total = base + tyres - (deductions.length * 10);
 
-            setScores({});
-            setTyres(0);
-            setDeductions([]);
-            setCar("");
-            setDriverName("");
+              await addDoc(collection(db,"scores"),{
+                event:eventName,
+                judge,
+                car,
+                driverName,
+                gender,
+                carClass,
+                scores,
+                tyres,
+                deductions,
+                total
+              });
 
-          } catch (err) {
-            console.error(err);
-            alert("Submit failed");
-          }
-        }}>
+              alert("Score saved");
+
+              setScores({});
+              setTyres(0);
+              setDeductions([]);
+              setCar("");
+              setDriverName("");
+              setGender("");
+              setCarClass("");
+
+            } catch (err) {
+              console.error(err);
+              alert("Submit failed");
+            }
+
+          }}
+        >
           Submit
         </button>
 
