@@ -32,7 +32,6 @@ export default function App() {
     setScreen(screenName);
   }
 
-  // ✅ LOAD EVENTS AUTOMATICALLY
   async function loadEvents() {
     const snap = await getDocs(collection(db, "events"));
     const list = [];
@@ -48,17 +47,60 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (screen === "judgeLogin") {
-      loadEvents();
-    }
+    if (screen === "judgeLogin") loadEvents();
   }, [screen]);
 
-  // ================= HOME =================
+  const styles = {
+    container: {
+      background: "#0b0f1a",
+      color: "#fff",
+      minHeight: "100vh",
+      padding: "15px",
+      fontFamily: "Arial"
+    },
+    button: {
+      width: "100%",
+      padding: "14px",
+      margin: "6px 0",
+      background: "#1c2333",
+      border: "1px solid #2f3a55",
+      color: "#fff",
+      fontSize: "16px"
+    },
+    row: {
+      display: "flex",
+      gap: "6px"
+    },
+    scoreRow: {
+      display: "flex",
+      overflowX: "auto"
+    },
+    scoreBtn: {
+      padding: "10px",
+      margin: "2px",
+      minWidth: "36px",
+      background: "#1c2333",
+      border: "1px solid #2f3a55",
+      color: "#fff"
+    },
+    activeBtn: {
+      background: "#ff6b00"
+    },
+    input: {
+      width: "100%",
+      padding: "12px",
+      margin: "10px 0",
+      background: "#111827",
+      border: "1px solid #2f3a55",
+      color: "#fff"
+    }
+  };
+
+  // HOME
   if (screen === "home") {
     return (
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
-
         <button style={styles.button} onClick={() => goTo("judgeLogin")}>
           Judge Login
         </button>
@@ -66,21 +108,17 @@ export default function App() {
     );
   }
 
-  // ================= JUDGE LOGIN =================
+  // JUDGE LOGIN
   if (screen === "judgeLogin") {
     return (
       <div style={styles.container}>
         <h2>Select Event</h2>
 
         {events.map((e, i) => (
-          <button
-            key={i}
-            style={styles.button}
-            onClick={() => {
-              setEventName(e.id);
-              setJudges(e.judges);
-            }}
-          >
+          <button key={i} style={styles.button} onClick={() => {
+            setEventName(e.id);
+            setJudges(e.judges);
+          }}>
             {e.id}
           </button>
         ))}
@@ -88,14 +126,10 @@ export default function App() {
         <h3>Select Judge</h3>
 
         {judges.map((j, i) => (
-          <button
-            key={i}
-            style={styles.button}
-            onClick={() => {
-              setJudge(j);
-              goTo("score");
-            }}
-          >
+          <button key={i} style={styles.button} onClick={() => {
+            setJudge(j);
+            goTo("score");
+          }}>
             {j}
           </button>
         ))}
@@ -107,37 +141,64 @@ export default function App() {
     );
   }
 
-  // ================= SCORE =================
+  // SCORE SCREEN (FIXED)
   if (screen === "score") {
     return (
       <div style={styles.container}>
+
         <h2>{eventName}</h2>
         <h3>{judge}</h3>
+
+        <input
+          style={styles.input}
+          placeholder="Car # / Rego"
+          value={car}
+          onChange={(e) => setCar(e.target.value)}
+        />
+
+        <div style={styles.row}>
+          <button style={styles.button} onClick={() => setGender("Male")}>Male</button>
+          <button style={styles.button} onClick={() => setGender("Female")}>Female</button>
+        </div>
+
+        <div>
+          {classes.map(c => (
+            <button key={c} style={styles.scoreBtn} onClick={() => setCarClass(c)}>
+              {c}
+            </button>
+          ))}
+        </div>
+
+        {categories.map(cat => (
+          <div key={cat}>
+            <p>{cat}</p>
+            <div style={styles.scoreRow}>
+              {[...Array(20)].map((_, i) => (
+                <button
+                  key={i}
+                  style={{
+                    ...styles.scoreBtn,
+                    ...(scores[cat] === i + 1 ? styles.activeBtn : {})
+                  }}
+                  onClick={() =>
+                    setScores(prev => ({ ...prev, [cat]: i + 1 }))
+                  }
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <button style={styles.button} onClick={() => goTo("home")}>
+          Home
+        </button>
+
       </div>
     );
   }
 
   return null;
 }
-
-// ================= STYLES =================
-const styles = {
-  container: {
-    background: "#0b0f1a",
-    color: "#fff",
-    minHeight: "100vh",
-    padding: "15px",
-    fontFamily: "Arial"
-  },
-  button: {
-    width: "100%",
-    padding: "14px",
-    margin: "6px 0",
-    background: "#1c2333",
-    border: "1px solid #2f3a55",
-    color: "#fff",
-    fontSize: "16px",
-    cursor: "pointer"
-  }
-};
 
