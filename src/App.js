@@ -15,7 +15,6 @@ export default function App() {
   const ADMIN_PASSWORD = "admin123";
 
   const [screen, setScreen] = useState("home");
-
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPass, setAdminPass] = useState("");
 
@@ -77,12 +76,26 @@ export default function App() {
     input:{width:"100%",padding:"10px",margin:"6px 0",background:"#111827",border:"1px solid #2f3a55",color:"#fff"}
   };
 
+  function printPage(){ window.print(); }
+
+  function formatRow(s, i){
+    const g = s.gender === "Female" ? "F" : "M";
+    const base = Object.values(s.scores||{}).reduce((a,b)=>a+b,0) + (s.tyres||0);
+    const d = s.deductions?.length ? ` - (${s.deductions.join(", ")})` : "";
+    return `#${i+1}${g} | ${s.car} | ${s.carClass} | ${base}${d} ${s.total}`;
+  }
+
+  function buildLeaderboard(){
+    return scoresDB
+      .filter(s => s.event === eventName)
+      .sort((a,b)=>b.total - a.total);
+  }
+
   // HOME
   if (screen === "home") {
     return (
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
-
         <button style={styles.button} onClick={()=>goTo("judgeLogin")}>Judge Login</button>
         <button style={styles.button} onClick={()=>goTo("score")}>Resume Judging</button>
         <button style={styles.button} onClick={()=>goTo("leaderboard")}>Leaderboard</button>
@@ -90,164 +103,185 @@ export default function App() {
     );
   }
 
-  // 🔥 FIXED LOGIN PAGE ONLY
+  // LOGIN + ADMIN
   if (screen === "judgeLogin") {
     return (
       <div style={styles.container}>
 
-        <h2>Judge Login</h2>
+        <h2>Event Setup / Judge Login</h2>
 
-        {/* ADMIN LOGIN */}
-        <input
-          style={styles.input}
-          placeholder="Admin Password"
-          value={adminPass}
-          onChange={(e)=>setAdminPass(e.target.value)}
-        />
+        <input style={styles.input} placeholder="Admin Password"
+          value={adminPass} onChange={(e)=>setAdminPass(e.target.value)} />
 
-        <button
-          style={styles.button}
-          onClick={()=>{
-            if(adminPass === ADMIN_PASSWORD){
-              setIsAdmin(true);
-              alert("Admin unlocked");
-            } else {
-              alert("Wrong password");
-            }
-          }}
-        >
+        <button style={styles.button} onClick={()=>{
+          if(adminPass === ADMIN_PASSWORD){
+            setIsAdmin(true);
+            alert("Admin Enabled");
+          } else alert("Wrong password");
+        }}>
           Admin Login
         </button>
 
-        {/* ADMIN CONTROLS */}
         {isAdmin && (
           <>
-            <h3>Create Event</h3>
+            <input style={styles.input} placeholder="Event Name"
+              value={newEvent} onChange={(e)=>setNewEvent(e.target.value)} />
 
-            <input
-              style={styles.input}
-              placeholder="Event Name"
-              value={newEvent}
-              onChange={(e)=>setNewEvent(e.target.value)}
-            />
+            <button style={styles.button} onClick={async ()=>{
+              await setDoc(doc(db,"events",newEvent),{
+                judges:[],
+                locked:false,
+                archived:false
+              });
+              loadEvents();
+            }}>Create Event</button>
 
-            <button
-              style={styles.button}
-              onClick={async ()=>{
-                if(!newEvent) return alert("Enter event");
+            <input style={styles.input} placeholder="Judge Name"
+              value={newJudge} onChange={(e)=>setNewJudge(e.target.value)} />
 
-                await setDoc(doc(db,"events",newEvent),{
-                  judges:[]
-                });
+            <button style={styles.button} onClick={async ()=>{
+              const ev = events.find(e=>e.id===eventName);
+              if((ev?.judges || []).length >= 6) return alert("Max 6 judges");
 
-                setNewEvent("");
-                loadEvents();
-              }}
-            >
-              Add Event
+              await updateDoc(doc(db,"events",eventName),{
+                judges:[...(ev?.judges || []), newJudge]
+              });
+
+              loadEvents();
+            }}>Add Judge</button>
+
+            <button style={styles.button} onClick={()=>updateDoc(doc(db,"events",eventName),{locked:true})}>
+              Lock Event
             </button>
 
-            <h3>Add Judge (Select Event First)</h3>
-
-            <input
-              style={styles.input}
-              placeholder="Judge Name"
-              value={newJudge}
-              onChange={(e)=>setNewJudge(e.target.value)}
-            />
-
-            <button
-              style={styles.button}
-              onClick={async ()=>{
-                if(!eventName) return alert("Select event first");
-                if(!newJudge) return alert("Enter judge");
-
-                const ev = events.find(e=>e.id===eventName);
-
-                await updateDoc(doc(db,"events",eventName),{
-                  judges:[...(ev?.judges || []), newJudge]
-                });
-
-                setNewJudge("");
-                loadEvents();
-              }}
-            >
-              Add Judge
+            <button style={styles.button} onClick={()=>deleteDoc(doc(db,"events",eventName))}>
+              Delete Event
             </button>
           </>
         )}
 
-        {/* EVENTS */}
         <h3>Select Event</h3>
 
-        {events.map((e,i)=>(
-          <div key={i}>
-            <button
-              style={styles.button}
-              onClick={()=>{
-                setEventName(e.id);
-                setJudges(e.judges || []);
-              }}
-            >
-              {e.id}
-            </button>
-
-            {isAdmin && (
-              <button
-                onClick={async ()=>{
-                  if(window.confirm("Delete event?")){
-                    await deleteDoc(doc(db,"events",e.id));
-                    loadEvents();
-                  }
-                }}
-              >
-                Delete
-              </button>
-            )}
-          </div>
+        {events.filter(e=>!e.archived).map(e=>(
+          <button key={e.id} style={styles.button} onClick={()=>{
+            setEventName(e.id);
+            setJudges(e.judges||[]);
+          }}>
+            {e.id} {e.locked ? "🔒":""}
+          </button>
         ))}
 
-        {/* JUDGES */}
         <h3>Select Judge</h3>
 
-        {judges.map((j,i)=>(
-          <button
-            key={i}
-            style={styles.button}
-            onClick={()=>{
-              setJudge(j);
-              goTo("score");
-            }}
-          >
+        {judges.map(j=>(
+          <button key={j} style={styles.button} onClick={()=>{setJudge(j);goTo("score");}}>
             {j}
           </button>
         ))}
 
-        <button style={styles.button} onClick={()=>goTo("home")}>
-          Home
-        </button>
-
-      </div>
-    );
-  }
-
-  // SCORE (UNCHANGED)
-  if (screen === "score") {
-    return (
-      <div style={styles.container}>
-        <h2>{eventName}</h2>
-        <h3>{judge}</h3>
-        <p>Score screen still intact</p>
         <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
       </div>
     );
   }
 
-  // LEADERBOARD (UNCHANGED)
+  // SCORE
+  if (screen === "score") {
+    return (
+      <div style={styles.container}>
+
+        <h2>{eventName}</h2>
+        <h3>{judge}</h3>
+
+        <input style={styles.input} placeholder="Car Rego"
+          value={car} onChange={(e)=>setCar(e.target.value)} />
+
+        <div style={styles.row}>
+          <button style={{...styles.button,...(gender==="Male"?styles.active:{})}} onClick={()=>setGender("Male")}>Male</button>
+          <button style={{...styles.button,...(gender==="Female"?styles.active:{})}} onClick={()=>setGender("Female")}>Female</button>
+        </div>
+
+        {classes.map(c=>(
+          <button key={c}
+            style={{...styles.scoreBtn,...(carClass===c?styles.active:{})}}
+            onClick={()=>setCarClass(c)}>
+            {c}
+          </button>
+        ))}
+
+        {categories.map(cat=>(
+          <div key={cat}>
+            <p>{cat}</p>
+            <div style={styles.scoreRow}>
+              {[...Array(20)].map((_,i)=>(
+                <button key={i}
+                  style={{...styles.scoreBtn,...(scores[cat]===i+1?styles.active:{})}}
+                  onClick={()=>setScores(prev=>({...prev,[cat]:i+1}))}>
+                  {i+1}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div style={styles.row}>
+          <button style={{...styles.button,...(tyres>=5?styles.active:{})}} onClick={()=>setTyres(t=>t>=5?t-5:5)}>Left Tyre</button>
+          <button style={{...styles.button,...(tyres===10?styles.active:{})}} onClick={()=>setTyres(t=>t===10?5:10)}>Right Tyre</button>
+        </div>
+
+        {["Reversing","Stopping","Barrier","Fire"].map(d=>(
+          <button key={d}
+            style={{...styles.button,...(deductions.includes(d)?styles.active:{})}}
+            onClick={()=>setDeductions(prev =>
+              prev.includes(d)?prev.filter(x=>x!==d):[...prev,d]
+            )}>
+            {d}
+          </button>
+        ))}
+
+        <h3>Total: {Object.values(scores).reduce((a,b)=>a+b,0) + tyres - deductions.length*10}</h3>
+
+        <button style={styles.button} onClick={async ()=>{
+          const total = Object.values(scores).reduce((a,b)=>a+b,0) + tyres - deductions.length*10;
+
+          await addDoc(collection(db,"scores"),{
+            event:eventName,
+            judge,
+            car,
+            gender,
+            carClass,
+            scores,
+            tyres,
+            deductions,
+            total
+          });
+
+          setScores({});
+          setTyres(0);
+          setDeductions([]);
+          setCar("");
+          setGender("");
+          setCarClass("");
+        }}>
+          Submit
+        </button>
+
+        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
+      </div>
+    );
+  }
+
+  // LEADERBOARD
   if (screen === "leaderboard") {
+    const data = buildLeaderboard();
     return (
       <div style={styles.container}>
         <h2>Leaderboard</h2>
+        <button style={styles.button} onClick={printPage}>Print</button>
+
+        {data.map((s,i)=>(
+          <p key={i}>{formatRow(s,i)}</p>
+        ))}
+
         <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
       </div>
     );
