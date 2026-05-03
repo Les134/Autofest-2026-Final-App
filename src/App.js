@@ -81,7 +81,24 @@ export default function App() {
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        <button style={styles.button} onClick={()=>goTo("judgeLogin")}>Judge Login</button>
+        <button style={styles.button} onClick={()=>goTo("judgeLogin")}>
+          Judge Login
+        </button>
+
+        {/* ✅ NEW: Resume Judging */}
+        <button
+          style={styles.button}
+          onClick={()=>{
+            if (!eventName || !judge) {
+              alert("No active judging session");
+              return;
+            }
+            goTo("score");
+          }}
+        >
+          Resume Judging
+        </button>
+
         <button style={styles.button}>Leaderboard</button>
         <button style={styles.button}>Class Leaderboard</button>
         <button style={styles.button}>Female Overall</button>
@@ -159,13 +176,11 @@ export default function App() {
         <input style={styles.input} placeholder="Car # / Rego" value={car} onChange={e=>setCar(e.target.value)} />
         <input style={styles.input} placeholder="Driver Name" value={driverName} onChange={e=>setDriverName(e.target.value)} />
 
-        {/* GENDER */}
         <div style={styles.row}>
           <button style={{...styles.button,...(gender==="Male"?styles.active:{})}} onClick={()=>setGender("Male")}>Male</button>
           <button style={{...styles.button,...(gender==="Female"?styles.active:{})}} onClick={()=>setGender("Female")}>Female</button>
         </div>
 
-        {/* CLASS */}
         <div>
           {classes.map(c=>(
             <button key={c}
@@ -176,7 +191,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* SCORES */}
         {categories.map(cat=>(
           <div key={cat}>
             <p>{cat}</p>
@@ -192,29 +206,20 @@ export default function App() {
           </div>
         ))}
 
-        {/* TYRES */}
         <p>Tyres (+5)</p>
         <div style={styles.row}>
-          <button
-            style={{...styles.button,...(tyres>=5?styles.active:{})}}
-            onClick={()=>setTyres(prev=>prev>=5?prev-5:5)}>
-            Left
-          </button>
-
-          <button
-            style={{...styles.button,...(tyres===10?styles.active:{})}}
-            onClick={()=>setTyres(prev=>prev===10?5:10)}>
-            Right
-          </button>
+          <button style={{...styles.button,...(tyres>=5?styles.active:{})}}
+            onClick={()=>setTyres(prev=>prev>=5?prev-5:5)}>Left</button>
+          <button style={{...styles.button,...(tyres===10?styles.active:{})}}
+            onClick={()=>setTyres(prev=>prev===10?5:10)}>Right</button>
         </div>
 
-        {/* DEDUCTIONS */}
         <p>Deductions (-10)</p>
         <div style={styles.row}>
           {["Reversing","Stopping","Barrier","Fire"].map(d=>(
             <button key={d}
               style={{...styles.button,...(deductions.includes(d)?styles.active:{})}}
-              onClick={()=>setDeductions(prev=>
+              onClick={()=>setDeductions(prev =>
                 prev.includes(d)?prev.filter(x=>x!==d):[...prev,d]
               )}>
               {d}
@@ -222,7 +227,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* TOTAL */}
         <h3>
           Total: {
             Object.values(scores).reduce((a,b)=>a+b,0)
@@ -231,32 +235,43 @@ export default function App() {
           }
         </h3>
 
-        {/* SUBMIT */}
+        {/* ✅ FIXED SUBMIT */}
         <button style={styles.button} onClick={async ()=>{
-          await addDoc(collection(db,"scores"),{
-            event:eventName,
-            judge,
-            car,
-            driverName,
-            gender,
-            carClass,
-            scores,
-            tyres,
-            deductions,
-            total:
+          if (!eventName || !judge) return alert("Missing event/judge");
+          if (!car) return alert("Enter car number");
+          if (Object.keys(scores).length !== 4) return alert("Complete all scores");
+
+          try {
+            const total =
               Object.values(scores).reduce((a,b)=>a+b,0)
               + tyres
-              - deductions.length*10
-          });
+              - deductions.length*10;
 
-          alert("Saved");
+            await addDoc(collection(db,"scores"),{
+              event:eventName,
+              judge,
+              car,
+              driverName,
+              gender,
+              carClass,
+              scores,
+              tyres,
+              deductions,
+              total
+            });
 
-          setScores({});
-          setTyres(0);
-          setDeductions([]);
-          setCar("");
-          setDriverName("");
+            alert("Score submitted");
 
+            setScores({});
+            setTyres(0);
+            setDeductions([]);
+            setCar("");
+            setDriverName("");
+
+          } catch (err) {
+            console.error(err);
+            alert("Submit failed");
+          }
         }}>
           Submit
         </button>
@@ -269,4 +284,3 @@ export default function App() {
 
   return null;
 }
-
