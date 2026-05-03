@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "YOUR_REAL_KEY",
@@ -11,5 +11,26 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
 export const db = getFirestore(app);
+
+// 🔥 DEBUG TEST (runs immediately)
+async function testConnection() {
+  try {
+    const snap = await getDocs(collection(db, "events"));
+    console.log("🔥 FIREBASE CONNECTED");
+    console.log("📊 EVENTS COUNT:", snap.size);
+
+    if (snap.size === 0) {
+      console.warn("⚠️ Connected BUT no data found");
+    }
+
+    snap.forEach(doc => {
+      console.log("DOC:", doc.id, doc.data());
+    });
+
+  } catch (err) {
+    console.error("❌ FIREBASE ERROR:", err);
+  }
+}
+
+testConnection();
