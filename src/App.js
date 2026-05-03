@@ -67,11 +67,11 @@ export default function App() {
 
   const styles = {
     container:{background:"#0b0f1a",color:"#fff",minHeight:"100vh",padding:"15px"},
-    button:{width:"100%",padding:"14px",margin:"6px 0",background:"#b00020",border:"1px solid #ff3b3b",color:"#fff"},
-    active:{background:"#ff0000"},
+    button:{width:"100%",padding:"14px",margin:"6px 0",background:"#1c2333",border:"1px solid #2f3a55",color:"#fff"},
+    active:{background:"#ff0000"}, // 🔥 ONLY ACTIVE IS RED
     row:{display:"flex",gap:"6px"},
     scoreRow:{display:"flex",overflowX:"auto"},
-    scoreBtn:{padding:"14px",margin:"3px",minWidth:"42px",background:"#b00020",border:"1px solid #ff3b3b",color:"#fff"},
+    scoreBtn:{padding:"14px",margin:"3px",minWidth:"42px",background:"#1c2333",border:"1px solid #2f3a55",color:"#fff"},
     input:{width:"100%",padding:"10px",margin:"6px 0",background:"#111827",border:"1px solid #2f3a55",color:"#fff"}
   };
 
