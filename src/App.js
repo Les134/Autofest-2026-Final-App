@@ -60,12 +60,15 @@ export default function App() {
     },
     button: {
       width: "100%",
-      padding: "14px",
+      padding: "16px",
       margin: "6px 0",
       background: "#1c2333",
       border: "1px solid #2f3a55",
       color: "#fff",
       fontSize: "16px"
+    },
+    active: {
+      background: "#ff6b00"
     },
     row: {
       display: "flex",
@@ -76,15 +79,13 @@ export default function App() {
       overflowX: "auto"
     },
     scoreBtn: {
-      padding: "10px",
-      margin: "2px",
-      minWidth: "36px",
+      padding: "14px",
+      margin: "3px",
+      minWidth: "42px",
       background: "#1c2333",
       border: "1px solid #2f3a55",
-      color: "#fff"
-    },
-    activeBtn: {
-      background: "#ff6b00"
+      color: "#fff",
+      fontSize: "14px"
     },
     input: {
       width: "100%",
@@ -96,7 +97,6 @@ export default function App() {
     }
   };
 
-  // HOME
   if (screen === "home") {
     return (
       <div style={styles.container}>
@@ -108,7 +108,6 @@ export default function App() {
     );
   }
 
-  // JUDGE LOGIN
   if (screen === "judgeLogin") {
     return (
       <div style={styles.container}>
@@ -141,7 +140,6 @@ export default function App() {
     );
   }
 
-  // SCORE SCREEN
   if (screen === "score") {
     return (
       <div style={styles.container}>
@@ -157,13 +155,27 @@ export default function App() {
         />
 
         <div style={styles.row}>
-          <button style={styles.button} onClick={() => setGender("Male")}>Male</button>
-          <button style={styles.button} onClick={() => setGender("Female")}>Female</button>
+          <button
+            style={{...styles.button, ...(gender==="Male" ? styles.active : {})}}
+            onClick={() => setGender("Male")}
+          >Male</button>
+
+          <button
+            style={{...styles.button, ...(gender==="Female" ? styles.active : {})}}
+            onClick={() => setGender("Female")}
+          >Female</button>
         </div>
 
         <div>
           {classes.map(c => (
-            <button key={c} style={styles.scoreBtn} onClick={() => setCarClass(c)}>
+            <button
+              key={c}
+              style={{
+                ...styles.scoreBtn,
+                ...(carClass===c ? styles.active : {})
+              }}
+              onClick={() => setCarClass(c)}
+            >
               {c}
             </button>
           ))}
@@ -178,7 +190,7 @@ export default function App() {
                   key={i}
                   style={{
                     ...styles.scoreBtn,
-                    ...(scores[cat] === i + 1 ? styles.activeBtn : {})
+                    ...(scores[cat] === i + 1 ? styles.active : {})
                   }}
                   onClick={() =>
                     setScores(prev => ({ ...prev, [cat]: i + 1 }))
@@ -194,12 +206,15 @@ export default function App() {
         {/* TYRES */}
         <p>Tyres (+5 each)</p>
         <div style={styles.row}>
-          <button onClick={() => setTyres(prev => prev >= 5 ? prev - 5 : prev)}>
-            -5
-          </button>
-          <button onClick={() => setTyres(prev => prev + 5)}>
-            +5
-          </button>
+          <button
+            style={{...styles.button, ...(tyres>=5 ? styles.active : {})}}
+            onClick={() => setTyres(prev => prev >= 5 ? prev - 5 : prev)}
+          >-5</button>
+
+          <button
+            style={{...styles.button, ...(tyres>0 ? styles.active : {})}}
+            onClick={() => setTyres(prev => prev + 5)}
+          >+5</button>
         </div>
 
         {/* DEDUCTIONS */}
@@ -209,8 +224,8 @@ export default function App() {
             <button
               key={d}
               style={{
-                background: deductions.includes(d) ? "#ff0000" : "#1c2333",
-                color: "#fff"
+                ...styles.button,
+                ...(deductions.includes(d) ? styles.active : {})
               }}
               onClick={() => {
                 setDeductions(prev =>
@@ -225,7 +240,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* TOTAL DISPLAY */}
         <h3>
           Total: {
             Object.values(scores).reduce((a,b)=>a+b,0)
@@ -233,34 +247,6 @@ export default function App() {
             - (deductions.length * 10)
           }
         </h3>
-
-        <button style={styles.button} onClick={async () => {
-
-          let base = Object.values(scores).reduce((a,b)=>a+b,0);
-          let total = base + tyres - (deductions.length * 10);
-
-          await addDoc(collection(db,"scores"),{
-            event:eventName,
-            judge,
-            car,
-            gender,
-            carClass,
-            scores,
-            tyres,
-            deductions,
-            total
-          });
-
-          alert("Submitted");
-
-          setScores({});
-          setTyres(0);
-          setDeductions([]);
-          setCar("");
-
-        }}>
-          Submit
-        </button>
 
         <button style={styles.button} onClick={() => goTo("home")}>
           Home
