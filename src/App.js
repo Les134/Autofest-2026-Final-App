@@ -51,7 +51,7 @@ export default function App(){
   const [deductions,setDeductions] = useState({});
   const [data,setData] = useState([]);
 
-  // LOAD DATA
+  // LOAD SCORES
   useEffect(()=>{
     if(!eventName) return;
 
@@ -64,6 +64,22 @@ export default function App(){
     load();
   },[eventName]);
 
+  // 🔧 LOAD EVENT JUDGES (FIX)
+  useEffect(()=>{
+    if(!eventName) return;
+
+    async function loadEvent(){
+      const snap = await getDocs(collection(db,"events"));
+      snap.forEach(d=>{
+        if(d.id === eventName){
+          setJudges(d.data().judges || []);
+        }
+      });
+    }
+
+    loadEvent();
+  },[eventName]);
+
   function setScore(cat,val){
     setScores(prev => ({ ...prev, [cat]: val }));
   }
@@ -72,10 +88,16 @@ export default function App(){
     setDeductions(prev => ({ ...prev, [d]: !prev[d] }));
   }
 
+  // 🔧 FIXED SUBMIT
   async function submit(){
 
     if(!car || !judge){
       alert("Enter entrant and judge");
+      return;
+    }
+
+    if(Object.keys(scores).length !== categories.length){
+      alert("Complete all score categories");
       return;
     }
 
@@ -86,25 +108,31 @@ export default function App(){
 
     let finalScore = rawScore - deductionTotal + tyreBonus;
 
-    await addDoc(collection(db,"scores"), {
-      event:eventName,
-      judge,
-      car,
-      gender,
-      carClass,
-      rawScore,
-      deductions: deductionItems,
-      finalScore
-    });
+    try{
+      await addDoc(collection(db,"scores"), {
+        event:eventName,
+        judge,
+        car,
+        gender,
+        carClass,
+        rawScore,
+        deductions: deductionItems,
+        finalScore
+      });
 
-    alert("Score Submitted");
+      alert("Score Submitted");
 
-    setScores({});
-    setDeductions({});
-    setCar("");
-    setGender("");
-    setCarClass("");
-    setTyres("");
+      setScores({});
+      setDeductions({});
+      setCar("");
+      setGender("");
+      setCarClass("");
+      setTyres("");
+
+    }catch(e){
+      console.error(e);
+      alert("Error saving score");
+    }
   }
 
   function combineScores(){
@@ -140,7 +168,6 @@ export default function App(){
     classBoards[c] = overall.filter(e=>e.class===c);
   });
 
-  // STYLES (UNCHANGED LOOK)
   const btn = {
     padding:"10px",
     margin:"5px",
@@ -161,7 +188,7 @@ export default function App(){
     color:"#fff"
   });
 
-  // HOME (RESTORED)
+  // HOME
   if(screen==="home"){
     return (
       <div style={{padding:20}}>
@@ -178,10 +205,29 @@ export default function App(){
           </div>
         ))}
 
+        <h2>Top 150</h2>
+        {overall.slice(0,150).map((e,i)=>(
+          <div key={i}>
+            #{i+1} | {e.car} ({e.gender?.[0]}) | {e.class} | {e.finalScore}
+          </div>
+        ))}
+
         <h3>Female</h3>
         {female.map((e,i)=>(
           <div key={i}>
             #{i+1} | {e.car} ({e.gender?.[0]}) | {e.class} | {e.finalScore}
+          </div>
+        ))}
+
+        <h2>Class Leaderboards</h2>
+        {classes.map(c=>(
+          <div key={c}>
+            <h3>{c}</h3>
+            {classBoards[c].map((e,i)=>(
+              <div key={i}>
+                #{i+1} | {e.car} ({e.gender?.[0]}) | {e.class} | {e.finalScore}
+              </div>
+            ))}
           </div>
         ))}
 
@@ -244,7 +290,7 @@ export default function App(){
     );
   }
 
-  // SCORE SCREEN (UNCHANGED LAYOUT)
+  // SCORE SCREEN
   if(screen==="score"){
     return (
       <div style={{padding:20}}>
