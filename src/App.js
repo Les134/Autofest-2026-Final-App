@@ -148,26 +148,24 @@ export default function App() {
               Create Event
             </button>
 
-            <h3>Select Event</h3>
-            {events.map(e=>(
-              <button key={e.id} style={styles.button} onClick={()=>{
-                setEventName(e.id);
-                setJudges(e.judges||[]);
-              }}>
-                {e.id} {e.locked?"🔒":""}
-              </button>
-            ))}
-
             <h3>Add Judge</h3>
+
             <input style={styles.input}
+              placeholder="Event Name"
+              value={eventName}
+              onChange={(e)=>setEventName(e.target.value)} />
+
+            <input style={styles.input}
+              placeholder="Judge Name"
               value={newJudge}
               onChange={(e)=>setNewJudge(e.target.value)} />
 
             <button style={styles.button} onClick={async ()=>{
 
-              if(!eventName) return alert("⚠ Select event first");
+              if(!eventName) return alert("Enter event name");
+              if(!newJudge) return alert("Enter judge name");
 
-              const ev = events.find(e=>e.id===eventName);
+              const ev = events.find(e=>e.id === eventName);
 
               if(!ev) return alert("Event not found");
 
@@ -184,27 +182,6 @@ export default function App() {
             }}>
               Add Judge
             </button>
-
-            <button style={styles.button}
-              onClick={()=>updateDoc(doc(db,"events",eventName),{locked:true})}>
-              🔒 Lock Event
-            </button>
-
-            <button style={styles.button}
-              onClick={()=>updateDoc(doc(db,"events",eventName),{archived:true})}>
-              📦 Archive
-            </button>
-
-            <button style={styles.button}
-              onClick={async ()=>{
-                const ev = events.find(e=>e.id===eventName);
-                if(ev?.locked) return alert("Cannot delete locked event");
-
-                await deleteDoc(doc(db,"events",eventName));
-                loadEvents();
-              }}>
-              Delete Event
-            </button>
           </>
         )}
 
@@ -219,7 +196,7 @@ export default function App() {
       <div style={styles.container}>
         <h2>Select Event</h2>
 
-        {events.filter(e=>!e.archived).map(e=>(
+        {events.map(e=>(
           <button key={e.id} style={styles.button} onClick={()=>{
             setEventName(e.id);
             setJudges(e.judges || []);
@@ -231,8 +208,7 @@ export default function App() {
         <h3>Select Judge</h3>
 
         {judges.map(j=>(
-          <button key={j} style={styles.button}
-            onClick={()=>{setJudge(j);goTo("score");}}>
+          <button key={j} style={styles.button}>
             {j}
           </button>
         ))}
@@ -242,10 +218,10 @@ export default function App() {
     );
   }
 
-  // SCORE + LEADERBOARD unchanged below...
+  // SCORE + LEADERBOARD unchanged placeholders
 
   if (screen === "score") {
-    return <div style={styles.container}><h2>Score working</h2></div>;
+    return <div style={styles.container}><h2>Score</h2></div>;
   }
 
   if (screen === "leaderboard") {
