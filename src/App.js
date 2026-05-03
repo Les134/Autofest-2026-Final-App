@@ -1,20 +1,4 @@
-import React, { useState, useEffect } from "react";
-
-// FIREBASE
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCSCBgg7bR1FYMNqOZGJQwXDqe79eXyAAM",
-  authDomain: "autofest-burnout-judging.firebaseapp.com",
-  projectId: "autofest-burnout-judging",
-  storageBucket: "autofest-burnout-judging.firebasestorage.app",
-  messagingSenderId: "453347070025",
-  appId: "1:453347070025:web:0567bc51df8a0b49b46f98"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import React, { useState } from "react";
 
 export default function App() {
 
@@ -54,24 +38,12 @@ export default function App() {
 
   const styles = {
     container:{background:"#000",color:"#fff",minHeight:"100vh",padding:"15px"},
-    button:{padding:"10px",margin:"4px",background:"#1c2333",color:"#fff",border:"1px solid #333"},
+    button:{padding:"10px",margin:"4px",background:"#1c2333",color:"#fff"},
     active:{background:"red"},
     row:{display:"flex",flexWrap:"wrap",gap:"4px"},
     input:{padding:"10px",margin:"6px 0",width:"100%"},
     scoreBtn:{width:"36px",margin:"2px"}
   };
-
-  // LOAD SCORES
-  useEffect(()=>{
-    loadScores();
-  },[]);
-
-  async function loadScores(){
-    const snap = await getDocs(collection(db,"scores"));
-    const list = [];
-    snap.forEach(d => list.push(d.data()));
-    setResults(list);
-  }
 
   function setScore(cat,val){
     setScores(prev=>({...prev,[cat]:val}));
@@ -88,24 +60,20 @@ export default function App() {
     return base + tyres - deductions.length*10;
   }
 
-  async function submitScore(){
+  function submitScore(){
     if(lockedEvents[selectedEvent]) return alert("Event Locked");
 
-    const total = totalScore();
-
-    await addDoc(collection(db,"scores"),{
-      event:selectedEvent,
-      judge:selectedJudge,
-      car,
-      gender,
-      carClass,
-      scores,
-      tyres,
-      deductions,
-      total
-    });
-
-    await loadScores();
+    setResults(prev=>[
+      ...prev,
+      {
+        event:selectedEvent,
+        car,
+        gender,
+        carClass,
+        total: totalScore(),
+        deductions
+      }
+    ]);
 
     setCar("");
     setGender("");
@@ -120,7 +88,7 @@ export default function App() {
   }
 
   function formatRow(r,i){
-    const d = r.deductions?.length ? ` - (${r.deductions.join(", ")})` : "";
+    const d = r.deductions.length ? ` - (${r.deductions.join(", ")})` : "";
     return `#${i+1}${r.gender} | ${r.car} | ${r.carClass} | ${r.total}${d}`;
   }
 
@@ -137,18 +105,9 @@ export default function App() {
     return(
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
-
-        <button style={styles.button} onClick={()=>setScreen("judge")}>
-          Judge Login
-        </button>
-
-        <button style={styles.button} onClick={()=>setScreen("setup")}>
-          Setup Event
-        </button>
-
-        <button style={styles.button} onClick={()=>setScreen("leaderboard")}>
-          Leaderboards
-        </button>
+        <button style={styles.button} onClick={()=>setScreen("judge")}>Judge Login</button>
+        <button style={styles.button} onClick={()=>setScreen("setup")}>Setup Event</button>
+        <button style={styles.button} onClick={()=>setScreen("leaderboard")}>Leaderboards</button>
       </div>
     );
   }
@@ -194,7 +153,6 @@ export default function App() {
           if(judges.length>=6) return;
 
           const updated=[...judges,newJudge];
-
           setEvents(prev=>({...prev,[selectedEvent]:updated}));
           setJudges(updated);
           setNewJudge("");
@@ -202,9 +160,7 @@ export default function App() {
           Add Judge
         </button>
 
-        <button style={styles.button} onClick={()=>setScreen("home")}>
-          Home
-        </button>
+        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
   }
@@ -231,9 +187,7 @@ export default function App() {
           </button>
         ))}
 
-        <button style={styles.button} onClick={()=>setScreen("home")}>
-          Home
-        </button>
+        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
   }
@@ -242,7 +196,6 @@ export default function App() {
   if(screen==="score"){
     return(
       <div style={styles.container}>
-
         <h2>{selectedEvent}</h2>
         <h3>{selectedJudge}</h3>
 
@@ -252,7 +205,9 @@ export default function App() {
           onChange={(e)=>setCar(e.target.value)}
         />
 
+        {/* ONE ROW */}
         <div style={styles.row}>
+
           <button style={{...styles.button,...(gender==="M"?styles.active:{})}}
             onClick={()=>setGender("M")}>M</button>
 
@@ -267,9 +222,7 @@ export default function App() {
             </button>
           ))}
 
-          <button style={styles.button} onClick={()=>setTyres(t=>t+5)}>
-            Tyre +5
-          </button>
+          <button style={styles.button} onClick={()=>setTyres(t=>t+5)}>Tyre +5</button>
 
           {deductionList.map(d=>(
             <button key={d}
@@ -297,18 +250,14 @@ export default function App() {
 
         <h2>Total: {totalScore()}</h2>
 
-        <button style={styles.button} onClick={submitScore}>
-          Submit
-        </button>
+        <button style={styles.button} onClick={submitScore}>Submit</button>
 
         <button style={styles.button}
           onClick={()=>setLockedEvents(prev=>({...prev,[selectedEvent]:true}))}>
           🔒 Lock Event
         </button>
 
-        <button style={styles.button} onClick={()=>setScreen("judge")}>
-          Back
-        </button>
+        <button style={styles.button} onClick={()=>setScreen("judge")}>Back</button>
       </div>
     );
   }
@@ -336,9 +285,7 @@ export default function App() {
           </div>
         ))}
 
-        <button style={styles.button} onClick={()=>setScreen("home")}>
-          Home
-        </button>
+        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
   }
