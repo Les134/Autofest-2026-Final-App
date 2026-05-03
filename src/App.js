@@ -26,7 +26,7 @@ const categories = [
   "Instant Smoke",
   "Volume of Smoke",
   "Constant Smoke",
-  "Driver Skill & Control"
+  "Driver Control"
 ];
 
 const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl / Rotary"];
@@ -51,7 +51,7 @@ export default function App(){
   const [deductions,setDeductions] = useState({});
   const [data,setData] = useState([]);
 
-  // LOAD SCORES
+  // LOAD DATA
   useEffect(()=>{
     if(!eventName) return;
 
@@ -62,8 +62,6 @@ export default function App(){
     }
 
     load();
-    const interval = setInterval(load, 2000);
-    return ()=>clearInterval(interval);
   },[eventName]);
 
   function setScore(cat,val){
@@ -77,7 +75,7 @@ export default function App(){
   async function submit(){
 
     if(!car || !judge){
-      alert("Missing entrant or judge");
+      alert("Enter entrant and judge");
       return;
     }
 
@@ -88,34 +86,29 @@ export default function App(){
 
     let finalScore = rawScore - deductionTotal + tyreBonus;
 
-    try{
-      await addDoc(collection(db,"scores"), {
-        event:eventName,
-        judge,
-        car,
-        gender,
-        carClass,
-        rawScore,
-        deductions: deductionItems,
-        finalScore
-      });
+    await addDoc(collection(db,"scores"), {
+      event:eventName,
+      judge,
+      car,
+      gender,
+      carClass,
+      rawScore,
+      deductions: deductionItems,
+      finalScore
+    });
 
-      alert("Score Submitted");
+    alert("Score Submitted");
 
-      setScores({});
-      setDeductions({});
-      setCar("");
-      setGender("");
-      setCarClass("");
-      setTyres("");
-
-    }catch(e){
-      console.error(e);
-      alert("Error saving score");
-    }
+    setScores({});
+    setDeductions({});
+    setCar("");
+    setGender("");
+    setCarClass("");
+    setTyres("");
   }
 
   function combineScores(){
+
     let combined = {};
 
     data.forEach(e=>{
@@ -147,6 +140,7 @@ export default function App(){
     classBoards[c] = overall.filter(e=>e.class===c);
   });
 
+  // STYLES (UNCHANGED LOOK)
   const btn = {
     padding:"10px",
     margin:"5px",
@@ -167,18 +161,25 @@ export default function App(){
     color:"#fff"
   });
 
-  // HOME
+  // HOME (RESTORED)
   if(screen==="home"){
     return (
       <div style={{padding:20}}>
         <h1>AUTOFEST</h1>
 
-        <button style={btn} onClick={()=>setScreen("admin")}>Admin / Event Setup</button>
+        <button style={btn} onClick={()=>setScreen("admin")}>Admin</button>
         <button style={btn} onClick={()=>setScreen("judgeLogin")}>Judge Login</button>
-        <button style={btn} onClick={()=>setScreen("score")}>Resume Scoring</button>
+        <button style={btn} onClick={()=>setScreen("score")}>Resume Scoresheet</button>
 
         <h2>Top 30</h2>
         {overall.slice(0,30).map((e,i)=>(
+          <div key={i}>
+            #{i+1} | {e.car} ({e.gender?.[0]}) | {e.class} | {e.finalScore}
+          </div>
+        ))}
+
+        <h3>Female</h3>
+        {female.map((e,i)=>(
           <div key={i}>
             #{i+1} | {e.car} ({e.gender?.[0]}) | {e.class} | {e.finalScore}
           </div>
@@ -189,7 +190,7 @@ export default function App(){
     );
   }
 
-  // ADMIN
+  // ADMIN PAGE
   if(screen==="admin"){
     return (
       <div style={{padding:20}}>
@@ -213,16 +214,11 @@ export default function App(){
             alert("Wrong password");
             return;
           }
-
-          await setDoc(doc(db,"events",eventName),{
-            judges,
-            locked:true
-          });
-
-          alert("Event Locked");
+          await setDoc(doc(db,"events",eventName),{ judges });
+          alert("Event Saved");
           setScreen("home");
         }}>
-          Lock Event
+          Save Event
         </button>
       </div>
     );
@@ -248,7 +244,7 @@ export default function App(){
     );
   }
 
-  // SCORE
+  // SCORE SCREEN (UNCHANGED LAYOUT)
   if(screen==="score"){
     return (
       <div style={{padding:20}}>
@@ -265,7 +261,9 @@ export default function App(){
 
         <div>
           {classes.map(c=>(
-            <button key={c} style={activeBtn(carClass===c)} onClick={()=>setCarClass(c)}>{c}</button>
+            <button key={c} style={activeBtn(carClass===c)} onClick={()=>setCarClass(c)}>
+              {c}
+            </button>
           ))}
         </div>
 
@@ -280,11 +278,20 @@ export default function App(){
           </div>
         ))}
 
+        <div>
+          {deductionsList.map(d=>(
+            <button key={d} style={activeBtn(deductions[d])} onClick={()=>toggleDeduction(d)}>
+              {d}
+            </button>
+          ))}
+        </div>
+
         <button style={btn} onClick={submit}>Submit</button>
         <button style={btn} onClick={()=>setScreen("home")}>Home</button>
+
       </div>
     );
   }
 
-  return <div />;
+  return null;
 }
