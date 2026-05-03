@@ -40,19 +40,25 @@ export default function App() {
     if (judge) localStorage.setItem("judge", judge);
   }, [judge]);
 
-  // ✅ FIXED JUDGE LOAD (direct doc lookup)
+  // ✅ FIXED JUDGE LOAD
   async function loadEvent(event) {
     if (!event) return alert("Enter event name");
 
     try {
-      const ref = doc(db, "events", event);
+      const cleanEvent = event.trim().toLowerCase();
+
+      const ref = doc(db, "events", cleanEvent);
       const snap = await getDoc(ref);
 
       if (snap.exists()) {
         const data = snap.data();
         setJudges(data.judges || []);
+
+        // ✅ DEBUG CONFIRM
+        alert("Judges loaded: " + (data.judges?.length || 0));
+
       } else {
-        alert("Event not found");
+        alert("Event not found: " + cleanEvent);
         setJudges([]);
       }
 
@@ -166,129 +172,8 @@ export default function App() {
   if (screen === "score") {
     return (
       <div style={styles.container}>
-
         <h2>{eventName}</h2>
         <h3>{judge}</h3>
-
-        <input
-          style={styles.input}
-          placeholder="Car # / Rego"
-          value={car}
-          onChange={(e) => setCar(e.target.value)}
-        />
-
-        {/* ✅ Male/Female same row */}
-        <div style={styles.row}>
-          <button style={styles.button} onClick={() => setGender("Male")}>Male</button>
-          <button style={styles.button} onClick={() => setGender("Female")}>Female</button>
-        </div>
-
-        <div>
-          {classes.map(c => (
-            <button key={c} style={styles.scoreBtn} onClick={() => setCarClass(c)}>
-              {c}
-            </button>
-          ))}
-        </div>
-
-        {categories.map(cat => (
-          <div key={cat}>
-            <p>{cat}</p>
-            <div style={styles.scoreRow}>
-              {[...Array(20)].map((_, i) => (
-                <button
-                  key={i}
-                  style={{
-                    ...styles.scoreBtn,
-                    ...(scores[cat] === i + 1 ? styles.activeBtn : {})
-                  }}
-                  onClick={() =>
-                    setScores(prev => ({ ...prev, [cat]: i + 1 }))
-                  }
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* ✅ TYRES (2 buttons) */}
-        <p>Tyres (+5 each)</p>
-        <div style={styles.row}>
-          <button
-            style={styles.button}
-            onClick={() => setTyres(prev => prev === 5 ? 0 : 5)}
-          >
-            {tyres >= 5 ? "✔ Left +5" : "Left"}
-          </button>
-
-          <button
-            style={styles.button}
-            onClick={() => setTyres(prev => prev === 10 ? 5 : 10)}
-          >
-            {tyres === 10 ? "✔ Right +5" : "Right"}
-          </button>
-        </div>
-
-        {/* ✅ DEDUCTIONS (one row) */}
-        <p>Deductions (-10 each)</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-          {["Reversing","Stopping","Barrier","Fire"].map(d => (
-            <button
-              key={d}
-              style={{
-                ...styles.button,
-                background: deductions.includes(d) ? "#ff0000" : "#1c2333"
-              }}
-              onClick={() => {
-                setDeductions(prev =>
-                  prev.includes(d)
-                    ? prev.filter(x => x !== d)
-                    : [...prev, d]
-                );
-              }}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-
-        <button style={styles.button} onClick={async () => {
-
-          if (!judge) return alert("Select judge");
-          if (!car) return alert("Enter car");
-
-          let base = Object.values(scores).reduce((a,b)=>a+b,0);
-          let total = base + tyres - (deductions.length * 10);
-
-          await addDoc(collection(db,"scores"),{
-            event:eventName,
-            judge,
-            car,
-            gender,
-            carClass,
-            scores,
-            tyres,
-            deductions,
-            total
-          });
-
-          alert("Submitted");
-
-          setScores({});
-          setCar("");
-          setTyres(0);
-          setDeductions([]);
-
-        }}>
-          Submit
-        </button>
-
-        <button style={styles.button} onClick={() => goTo("home")}>
-          Home
-        </button>
-
       </div>
     );
   }
