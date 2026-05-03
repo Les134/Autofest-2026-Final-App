@@ -14,7 +14,7 @@ export default function App() {
 
   const [results, setResults] = useState([]);
 
-  // SCORE
+  // SCORE STATE
   const [car, setCar] = useState("");
   const [gender, setGender] = useState("");
   const [carClass, setCarClass] = useState("");
@@ -35,14 +35,58 @@ export default function App() {
 
   const deductionList = ["Reversing","Stopping","Barrier","Fire"];
 
-  // 🎨 LIGHT THEME (like your screenshot)
+  // 🌞 SUNLIGHT OPTIMISED DARK THEME
   const styles = {
-    container:{background:"#f5f5f5",minHeight:"100vh",padding:"20px",fontFamily:"Arial"},
-    button:{padding:"12px",margin:"6px 0",background:"#e0e0e0",border:"1px solid #ccc",cursor:"pointer"},
-    active:{background:"red",color:"#fff"},
-    row:{display:"flex",flexWrap:"wrap",gap:"6px"},
-    input:{padding:"10px",margin:"6px 0",width:"100%"},
-    scoreBtn:{width:"38px",padding:"8px",background:"#e0e0e0",border:"1px solid #ccc"}
+    container: {
+      background: "#000",
+      color: "#fff",
+      minHeight: "100vh",
+      padding: "18px",
+      fontFamily: "Arial"
+    },
+
+    button: {
+      padding: "16px",
+      margin: "8px 0",
+      background: "#2a2a2a",
+      color: "#fff",
+      border: "2px solid #555",
+      fontSize: "16px",
+      fontWeight: "600",
+      cursor: "pointer"
+    },
+
+    active: {
+      background: "#ff2a2a",
+      color: "#fff",
+      border: "2px solid #ff0000"
+    },
+
+    row: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "8px"
+    },
+
+    input: {
+      padding: "14px",
+      margin: "8px 0",
+      width: "100%",
+      background: "#111",
+      color: "#fff",
+      border: "2px solid #555",
+      fontSize: "16px"
+    },
+
+    scoreBtn: {
+      width: "44px",
+      height: "44px",
+      background: "#2a2a2a",
+      color: "#fff",
+      border: "2px solid #555",
+      fontSize: "14px",
+      fontWeight: "600"
+    }
   };
 
   function setScore(cat,val){
@@ -63,7 +107,14 @@ export default function App() {
   function submitScore(){
     setResults(prev=>[
       ...prev,
-      { event:selectedEvent, car, gender, carClass, total: totalScore(), deductions }
+      {
+        event:selectedEvent,
+        car,
+        gender,
+        carClass,
+        total: totalScore(),
+        deductions
+      }
     ]);
 
     setCar("");
@@ -87,7 +138,7 @@ export default function App() {
     return [...list].sort((a,b)=>b.total-a.total);
   }
 
-  // ================= HOME =================
+  // HOME
   if(screen==="home"){
     return(
       <div style={styles.container}>
@@ -112,7 +163,7 @@ export default function App() {
     );
   }
 
-  // ================= SETUP =================
+  // SETUP
   if(screen==="setup"){
     return(
       <div style={styles.container}>
@@ -170,7 +221,7 @@ export default function App() {
     );
   }
 
-  // ================= JUDGE LOGIN =================
+  // JUDGE LOGIN
   if(screen==="judge"){
     return(
       <div style={styles.container}>
@@ -199,7 +250,7 @@ export default function App() {
     );
   }
 
-  // ================= SCORE =================
+  // SCORE
   if(screen==="score"){
     return(
       <div style={styles.container}>
@@ -213,7 +264,6 @@ export default function App() {
           onChange={(e)=>setCar(e.target.value)}
         />
 
-        {/* ONE ROW */}
         <div style={styles.row}>
 
           <button style={{...styles.button,...(gender==="M"?styles.active:{})}}
@@ -243,7 +293,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* SCORES */}
         {categories.map(cat=>(
           <div key={cat}>
             <p>{cat}</p>
@@ -275,7 +324,7 @@ export default function App() {
     );
   }
 
-  // ================= LEADERBOARD =================
+  // LEADERBOARD
   if(screen==="leaderboard"){
     const data = getEventResults();
 
