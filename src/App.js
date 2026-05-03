@@ -12,6 +12,17 @@ export default function App() {
 
   const [newJudge, setNewJudge] = useState("");
 
+  // SCORING STATE
+  const [car, setCar] = useState("");
+  const [scores, setScores] = useState({});
+
+  const categories = [
+    "Smoke",
+    "Commitment",
+    "Style",
+    "Control"
+  ];
+
   const styles = {
     container: {
       background: "#000",
@@ -29,13 +40,48 @@ export default function App() {
       color: "#fff",
       border: "1px solid #333"
     },
+    active: {
+      background: "red"
+    },
     input: {
       width: "100%",
       padding: "12px",
       margin: "8px 0",
       fontSize: "16px"
+    },
+    row: {
+      display: "flex",
+      flexWrap: "wrap"
+    },
+    scoreBtn: {
+      width: "40px",
+      margin: "2px",
+      padding: "10px"
     }
   };
+
+  function setScore(cat, val) {
+    setScores(prev => ({
+      ...prev,
+      [cat]: val
+    }));
+  }
+
+  function getTotal() {
+    return Object.values(scores).reduce((a, b) => a + b, 0);
+  }
+
+  function submitScore() {
+    if (!car) {
+      alert("Enter car number");
+      return;
+    }
+
+    alert("Score saved (local)");
+
+    setCar("");
+    setScores({});
+  }
 
   // ================= HOME =================
   if (screen === "home") {
@@ -194,10 +240,42 @@ export default function App() {
     return (
       <div style={styles.container}>
 
-        <h2>Event: {selectedEvent}</h2>
-        <h3>Judge: {selectedJudge}</h3>
+        <h2>{selectedEvent}</h2>
+        <h3>{selectedJudge}</h3>
 
-        <p>Ready to start scoring...</p>
+        <input
+          style={styles.input}
+          placeholder="Car Number"
+          value={car}
+          onChange={(e) => setCar(e.target.value)}
+        />
+
+        {categories.map(cat => (
+          <div key={cat}>
+            <p>{cat}</p>
+
+            <div style={styles.row}>
+              {[...Array(21)].map((_, i) => (
+                <button
+                  key={i}
+                  style={{
+                    ...styles.scoreBtn,
+                    ...(scores[cat] === i ? styles.active : {})
+                  }}
+                  onClick={() => setScore(cat, i)}
+                >
+                  {i}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <h3>Total: {getTotal()}</h3>
+
+        <button style={styles.button} onClick={submitScore}>
+          Submit
+        </button>
 
         <button
           style={styles.button}
