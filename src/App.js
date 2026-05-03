@@ -8,6 +8,7 @@ export default function App() {
   const [eventName, setEventName] = useState("");
   const [selectedEvent, setSelectedEvent] = useState("");
   const [judges, setJudges] = useState([]);
+  const [selectedJudge, setSelectedJudge] = useState("");
 
   const [newJudge, setNewJudge] = useState("");
 
@@ -16,19 +17,23 @@ export default function App() {
       background: "#000",
       color: "#fff",
       minHeight: "100vh",
-      padding: "15px",
+      padding: "20px",
       fontFamily: "Arial"
     },
     button: {
       width: "100%",
       padding: "14px",
-      margin: "6px 0",
-      fontSize: "16px"
+      margin: "8px 0",
+      fontSize: "16px",
+      background: "#1c2333",
+      color: "#fff",
+      border: "1px solid #333"
     },
     input: {
       width: "100%",
-      padding: "10px",
-      margin: "6px 0"
+      padding: "12px",
+      margin: "8px 0",
+      fontSize: "16px"
     }
   };
 
@@ -42,15 +47,15 @@ export default function App() {
           Judge Login
         </button>
 
-        <button style={styles.button} onClick={() => setScreen("admin")}>
+        <button style={styles.button} onClick={() => setScreen("setup")}>
           Setup Event
         </button>
       </div>
     );
   }
 
-  // ================= ADMIN =================
-  if (screen === "admin") {
+  // ================= SETUP =================
+  if (screen === "setup") {
     return (
       <div style={styles.container}>
 
@@ -66,14 +71,15 @@ export default function App() {
         <button
           style={styles.button}
           onClick={() => {
-            if (!eventName.trim()) return alert("Enter event name");
+            const name = eventName.trim();
+            if (!name) return alert("Enter event name");
 
-            setEvents({
-              ...events,
-              [eventName]: []
-            });
+            setEvents(prev => ({
+              ...prev,
+              [name]: []
+            }));
 
-            setSelectedEvent(eventName);
+            setSelectedEvent(name);
             setJudges([]);
             setEventName("");
           }}
@@ -109,18 +115,18 @@ export default function App() {
           style={styles.button}
           onClick={() => {
             if (!selectedEvent) return alert("Select event first");
-            if (!newJudge.trim()) return alert("Enter judge name");
 
-            if (judges.length >= 6) {
-              return alert("Max 6 judges");
-            }
+            const name = newJudge.trim();
+            if (!name) return alert("Enter judge name");
 
-            const updated = [...judges, newJudge];
+            if (judges.length >= 6) return alert("Max 6 judges");
 
-            setEvents({
-              ...events,
+            const updated = [...judges, name];
+
+            setEvents(prev => ({
+              ...prev,
               [selectedEvent]: updated
-            });
+            }));
 
             setJudges(updated);
             setNewJudge("");
@@ -164,13 +170,40 @@ export default function App() {
         <h3>Select Judge</h3>
 
         {judges.map(j => (
-          <button key={j} style={styles.button}>
+          <button
+            key={j}
+            style={styles.button}
+            onClick={() => {
+              setSelectedJudge(j);
+              setScreen("judgeScreen");
+            }}
+          >
             {j}
           </button>
         ))}
 
         <button style={styles.button} onClick={() => setScreen("home")}>
           Home
+        </button>
+      </div>
+    );
+  }
+
+  // ================= JUDGE SCREEN =================
+  if (screen === "judgeScreen") {
+    return (
+      <div style={styles.container}>
+
+        <h2>Event: {selectedEvent}</h2>
+        <h3>Judge: {selectedJudge}</h3>
+
+        <p>Ready to start scoring...</p>
+
+        <button
+          style={styles.button}
+          onClick={() => setScreen("judge")}
+        >
+          Back
         </button>
       </div>
     );
