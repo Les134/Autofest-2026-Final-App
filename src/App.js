@@ -49,17 +49,11 @@ export default function App() {
   async function loadEvents() {
     const snap = await getDocs(collection(db, "events"));
     const list = [];
-
     snap.forEach(d => {
-      const data = d.data();
-      if (data.judges) {
-        list.push({
-          id: d.id,
-          judges: data.judges
-        });
+      if (d.data().judges) {
+        list.push({ id: d.id, judges: d.data().judges });
       }
     });
-
     setEvents(list);
   }
 
@@ -87,38 +81,28 @@ export default function App() {
 
   function buildLeaderboard(filterFn = () => true, limit = null) {
 
-    const grouped = {};
-
-    scoresDB
+    let data = scoresDB
       .filter(s => s.event === eventName)
-      .filter(filterFn)
-      .forEach(s => {
+      .filter(filterFn);
 
-        if (!grouped[s.car]) {
-          grouped[s.car] = {
-            car: s.car,
-            driverName: s.driverName,
-            carClass: s.carClass,
-            gender: s.gender,
-            total: 0,
-            runs: 0
-          };
-        }
+    data.sort((a,b)=>b.total - a.total);
 
-        grouped[s.car].total += s.total;
-        grouped[s.car].runs += 1;
-      });
+    if (limit) data = data.slice(0, limit);
 
-    let result = Object.values(grouped).map(r => ({
-      ...r,
-      avg: r.total / r.runs
-    }));
+    return data;
+  }
 
-    result.sort((a,b) => b.avg - a.avg);
+  function formatRow(s, i){
+    const genderTag = s.gender === "Female" ? "F" : "M";
 
-    if (limit) result = result.slice(0, limit);
+    const deductionsText = s.deductions?.length
+      ? " - (" + s.deductions.join(", ") + ")"
+      : "";
 
-    return result;
+    const baseScore =
+      Object.values(s.scores || {}).reduce((a,b)=>a+b,0) + (s.tyres || 0);
+
+    return `#${i+1}${genderTag} | ${s.car} | ${s.carClass || ""} | ${baseScore}${deductionsText} ${s.total}`;
   }
 
   // HOME
@@ -127,82 +111,19 @@ export default function App() {
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        <button style={styles.button} onClick={()=>goTo("judgeLogin")}>
-          Judge Login
-        </button>
+        <button style={styles.button} onClick={()=>goTo("judgeLogin")}>Judge Login</button>
+        <button style={styles.button} onClick={()=>goTo("score")}>Resume Judging</button>
 
-        <button style={styles.button} onClick={()=>goTo("score")}>
-          Resume Judging
-        </button>
-
-        <button style={styles.button} onClick={()=>goTo("leaderboard")}>
-          Leaderboard
-        </button>
-
-        <button style={styles.button} onClick={()=>goTo("classLeaderboard")}>
-          Class Leaderboard
-        </button>
-
-        <button style={styles.button} onClick={()=>goTo("femaleLeaderboard")}>
-          Female Overall
-        </button>
-
-        <button style={styles.button} onClick={()=>goTo("top150")}>
-          Top 150
-        </button>
-
-        <button style={styles.button} onClick={()=>goTo("top30")}>
-          Top 30 Finals
-        </button>
+        <button style={styles.button} onClick={()=>goTo("leaderboard")}>Leaderboard</button>
+        <button style={styles.button} onClick={()=>goTo("classLeaderboard")}>Class Leaderboard</button>
+        <button style={styles.button} onClick={()=>goTo("femaleLeaderboard")}>Female Overall</button>
+        <button style={styles.button} onClick={()=>goTo("top150")}>Top 150</button>
+        <button style={styles.button} onClick={()=>goTo("top30")}>Top 30 Finals</button>
       </div>
     );
   }
 
-  // JUDGE LOGIN
-  if (screen === "judgeLogin") {
-    return (
-      <div style={styles.container}>
-
-        <h2>Add Event</h2>
-
-        <input style={styles.input} placeholder="Event Name" value={newEvent} onChange={e=>setNewEvent(e.target.value)} />
-        <input style={styles.input} placeholder="Judges (comma separated)" value={newJudges} onChange={e=>setNewJudges(e.target.value)} />
-
-        <button style={styles.button} onClick={async ()=>{
-          await setDoc(doc(db,"events",newEvent),{
-            judges:newJudges.split(",").map(j=>j.trim())
-          });
-          loadEvents();
-        }}>
-          Add Event
-        </button>
-
-        <h2>Select Event</h2>
-
-        {events.map((e,i)=>(
-          <button key={i} style={styles.button} onClick={()=>{
-            setEventName(e.id);
-            setJudges(e.judges);
-          }}>
-            {e.id}
-          </button>
-        ))}
-
-        <h3>Select Judge</h3>
-
-        {judges.map((j,i)=>(
-          <button key={i} style={styles.button} onClick={()=>{setJudge(j);goTo("score");}}>
-            {j}
-          </button>
-        ))}
-
-        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
-
-      </div>
-    );
-  }
-
-  // SCORE (unchanged logic)
+  // SCORE
   if (screen === "score") {
     return (
       <div style={styles.container}>
@@ -210,8 +131,23 @@ export default function App() {
         <h2>{eventName}</h2>
         <h3>{judge}</h3>
 
-        <input style={styles.input} placeholder="Car # / Rego" value={car} onChange={e=>setCar(e.target.value)} />
-        <input style={styles.input} placeholder="Driver Name" value={driverName} onChange={e=>setDriverName(e.target.value)} />
+        <input style={styles.input} placeholder="Car # / Rego" value={car} onChange={(e)=>setCar(e.target.value)} />
+        <input style={styles.input} placeholder="Driver Name" value={driverName} onChange={(e)=>setDriverName(e.target.value)} />
+
+        <div style={styles.row}>
+          <button style={{...styles.button,...(gender==="Male"?styles.active:{})}} onClick={()=>setGender("Male")}>Male</button>
+          <button style={{...styles.button,...(gender==="Female"?styles.active:{})}} onClick={()=>setGender("Female")}>Female</button>
+        </div>
+
+        <div>
+          {classes.map(c=>(
+            <button key={c}
+              style={{...styles.scoreBtn,...(carClass===c?styles.active:{})}}
+              onClick={()=>setCarClass(c)}>
+              {c}
+            </button>
+          ))}
+        </div>
 
         {categories.map(cat=>(
           <div key={cat}>
@@ -228,11 +164,36 @@ export default function App() {
           </div>
         ))}
 
-        <button style={styles.button} onClick={async ()=>{
-          const total =
+        <p>Tyres</p>
+        <div style={styles.row}>
+          <button style={{...styles.button,...(tyres>=5?styles.active:{})}} onClick={()=>setTyres(prev=>prev>=5?prev-5:5)}>Left</button>
+          <button style={{...styles.button,...(tyres===10?styles.active:{})}} onClick={()=>setTyres(prev=>prev===10?5:10)}>Right</button>
+        </div>
+
+        <p>Deductions</p>
+        <div style={styles.row}>
+          {["Reversing","Stopping","Barrier","Fire"].map(d=>(
+            <button key={d}
+              style={{...styles.button,...(deductions.includes(d)?styles.active:{})}}
+              onClick={()=>setDeductions(prev =>
+                prev.includes(d)?prev.filter(x=>x!==d):[...prev,d]
+              )}>
+              {d}
+            </button>
+          ))}
+        </div>
+
+        <h3>
+          Total: {
             Object.values(scores).reduce((a,b)=>a+b,0)
             + tyres
-            - deductions.length*10;
+            - deductions.length*10
+          }
+        </h3>
+
+        <button style={styles.button} onClick={async ()=>{
+          const base = Object.values(scores).reduce((a,b)=>a+b,0) + tyres;
+          const total = base - deductions.length*10;
 
           await addDoc(collection(db,"scores"),{
             event:eventName,
@@ -241,12 +202,20 @@ export default function App() {
             driverName,
             gender,
             carClass,
+            scores,
+            tyres,
+            deductions,
             total
           });
 
+          // FULL RESET
           setScores({});
+          setTyres(0);
+          setDeductions([]);
           setCar("");
           setDriverName("");
+          setGender("");
+          setCarClass("");
         }}>
           Submit
         </button>
@@ -261,75 +230,8 @@ export default function App() {
     const data = buildLeaderboard();
     return (
       <div style={styles.container}>
-        <h2>Overall Leaderboard</h2>
-        {data.map((r,i)=>(
-          <p key={i}>
-            {i+1}. {r.car} - {r.avg.toFixed(1)}
-          </p>
-        ))}
-        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
-      </div>
-    );
-  }
-
-  // CLASS
-  if (screen === "classLeaderboard") {
-    return (
-      <div style={styles.container}>
-        <h2>Class Leaderboard</h2>
-        {classes.map(cls=>{
-          const data = buildLeaderboard(s => s.carClass === cls);
-          return (
-            <div key={cls}>
-              <h3>{cls}</h3>
-              {data.map((r,i)=>(
-                <p key={i}>{i+1}. {r.car} - {r.avg.toFixed(1)}</p>
-              ))}
-            </div>
-          );
-        })}
-        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
-      </div>
-    );
-  }
-
-  // FEMALE
-  if (screen === "femaleLeaderboard") {
-    const data = buildLeaderboard(s => s.gender === "Female");
-    return (
-      <div style={styles.container}>
-        <h2>Female Leaderboard</h2>
-        {data.map((r,i)=>(
-          <p key={i}>{i+1}. {r.car} - {r.avg.toFixed(1)}</p>
-        ))}
-        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
-      </div>
-    );
-  }
-
-  // TOP 150
-  if (screen === "top150") {
-    const data = buildLeaderboard(()=>true,150);
-    return (
-      <div style={styles.container}>
-        <h2>Top 150</h2>
-        {data.map((r,i)=>(
-          <p key={i}>{i+1}. {r.car} - {r.avg.toFixed(1)}</p>
-        ))}
-        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
-      </div>
-    );
-  }
-
-  // TOP 30
-  if (screen === "top30") {
-    const data = buildLeaderboard(()=>true,30);
-    return (
-      <div style={styles.container}>
-        <h2>Top 30 Finals</h2>
-        {data.map((r,i)=>(
-          <p key={i}>{i+1}. {r.car} - {r.avg.toFixed(1)}</p>
-        ))}
+        <h2>Leaderboard</h2>
+        {data.map((s,i)=>(<p key={i}>{formatRow(s,i)}</p>))}
         <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
       </div>
     );
