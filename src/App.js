@@ -16,7 +16,6 @@ export default function App() {
   const [results, setResults] = useState([]);
   const [lockedEvents, setLockedEvents] = useState({});
 
-  // SCORE STATE
   const [car, setCar] = useState("");
   const [gender, setGender] = useState("");
   const [carClass, setCarClass] = useState("");
@@ -84,7 +83,7 @@ export default function App() {
     setDeductions([]);
   }
 
-  // 🔥 COMBINE JUDGES
+  // 🔥 PRO COMBINE (DROP HIGH & LOW)
   function combineScores(list) {
     const grouped = {};
 
@@ -102,7 +101,14 @@ export default function App() {
     });
 
     return Object.values(grouped).map(g => {
-      const avg = g.totals.reduce((a,b)=>a+b,0)/g.totals.length;
+      let scores = [...g.totals].sort((a,b)=>a-b);
+
+      if (scores.length > 2) {
+        scores = scores.slice(1, -1); // drop lowest & highest
+      }
+
+      const avg = scores.reduce((a,b)=>a+b,0) / scores.length;
+
       return {
         car:g.car,
         gender:g.gender,
@@ -130,23 +136,15 @@ export default function App() {
     window.print();
   }
 
-  // ================= HOME =================
+  // HOME
   if(screen==="home"){
     return(
       <div style={styles.container}>
-        <h1>🔥 AUTOFEST 🔥</h1>
+        <h1>🔥 AUTOFEST PRO JUDGING 🔥</h1>
 
-        <button style={styles.button} onClick={()=>setScreen("setup")}>
-          New Event
-        </button>
-
-        <button style={styles.button} onClick={()=>setScreen("judge")}>
-          Judge Login
-        </button>
-
-        <button style={styles.button} onClick={()=>setScreen("score")}>
-          Score Sheet
-        </button>
+        <button style={styles.button} onClick={()=>setScreen("setup")}>New Event</button>
+        <button style={styles.button} onClick={()=>setScreen("judge")}>Judge Login</button>
+        <button style={styles.button} onClick={()=>setScreen("score")}>Score Sheet</button>
 
         <h3>Leaderboards</h3>
 
@@ -170,7 +168,7 @@ export default function App() {
     );
   }
 
-  // ================= SETUP =================
+  // SETUP
   if(screen==="setup"){
     return(
       <div style={styles.container}>
@@ -224,7 +222,7 @@ export default function App() {
     );
   }
 
-  // ================= JUDGE =================
+  // JUDGE LOGIN
   if(screen==="judge"){
     return(
       <div style={styles.container}>
@@ -253,7 +251,7 @@ export default function App() {
     );
   }
 
-  // ================= SCORE =================
+  // SCORE
   if(screen==="score"){
     return(
       <div style={styles.container}>
@@ -323,7 +321,7 @@ export default function App() {
     );
   }
 
-  // ================= LEADERBOARD =================
+  // LEADERBOARD
   if(screen==="leaderboard"){
 
     let data = combineScores(getEventResults());
