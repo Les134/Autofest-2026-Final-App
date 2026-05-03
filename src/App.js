@@ -32,18 +32,33 @@ export default function App() {
     setScreen(screenName);
   }
 
+  // ✅ DEBUG VERSION
   async function loadEvents() {
-    const snap = await getDocs(collection(db, "events"));
-    const list = [];
+    try {
+      const snap = await getDocs(collection(db, "events"));
 
-    snap.forEach(doc => {
-      list.push({
-        id: doc.id,
-        judges: doc.data().judges || []
+      console.log("RAW SNAP:", snap);
+
+      const list = [];
+
+      snap.forEach(doc => {
+        console.log("DOC FOUND:", doc.id, doc.data());
+        list.push({
+          id: doc.id,
+          judges: doc.data().judges || []
+        });
       });
-    });
 
-    setEvents(list);
+      console.log("FINAL EVENTS:", list);
+
+      alert("Events found: " + list.length);
+
+      setEvents(list);
+
+    } catch (err) {
+      console.error("FIRESTORE ERROR:", err);
+      alert("Firestore error: " + err.message);
+    }
   }
 
   useEffect(() => {
@@ -141,7 +156,7 @@ export default function App() {
     );
   }
 
-  // SCORE SCREEN (FIXED)
+  // SCORE SCREEN
   if (screen === "score") {
     return (
       <div style={styles.container}>
