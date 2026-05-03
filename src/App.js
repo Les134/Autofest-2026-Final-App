@@ -5,6 +5,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  deleteDoc,
   doc,
   getDoc
 } from "firebase/firestore";
@@ -25,19 +26,23 @@ export default function App() {
   const [newEvent, setNewEvent] = useState("");
   const [newJudge, setNewJudge] = useState("");
 
+  // LOAD EVENTS
   async function loadEvents() {
     const snap = await getDocs(collection(db, "events"));
     const list = [];
-    snap.forEach(d => list.push({ id:d.id, ...d.data() }));
+    snap.forEach(d => list.push({ id: d.id, ...d.data() }));
     setEvents(list);
   }
 
-  async function loadJudges(eventId){
-    if(!eventId) return;
-    const ref = doc(db,"events",eventId);
+  // LOAD JUDGES FROM FIREBASE (REAL DATA)
+  async function loadJudges(eventId) {
+    if (!eventId) return;
+    const ref = doc(db, "events", eventId);
     const snap = await getDoc(ref);
-    if(snap.exists()){
+    if (snap.exists()) {
       setJudges(snap.data().judges || []);
+    } else {
+      setJudges([]);
     }
   }
 
@@ -46,29 +51,42 @@ export default function App() {
   }, []);
 
   const styles = {
-    container:{background:"#000",color:"#fff",minHeight:"100vh",padding:"15px"},
-    button:{width:"100%",padding:"14px",margin:"6px 0"},
-    input:{width:"100%",padding:"10px",margin:"6px 0"}
+    container: {
+      background: "#000",
+      color: "#fff",
+      minHeight: "100vh",
+      padding: "15px"
+    },
+    button: {
+      width: "100%",
+      padding: "14px",
+      margin: "6px 0"
+    },
+    input: {
+      width: "100%",
+      padding: "10px",
+      margin: "6px 0"
+    }
   };
 
-  // HOME
+  // ================= HOME =================
   if (screen === "home") {
     return (
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        <button style={styles.button} onClick={()=>setScreen("judge")}>
+        <button style={styles.button} onClick={() => setScreen("judge")}>
           Judge Login
         </button>
 
-        <button style={styles.button} onClick={()=>setScreen("admin")}>
+        <button style={styles.button} onClick={() => setScreen("admin")}>
           Admin Setup
         </button>
       </div>
     );
   }
 
-  // ADMIN
+  // ================= ADMIN =================
   if (screen === "admin") {
     return (
       <div style={styles.container}>
@@ -79,13 +97,15 @@ export default function App() {
           style={styles.input}
           placeholder="Password"
           value={adminPass}
-          onChange={(e)=>setAdminPass(e.target.value)}
+          onChange={(e) => setAdminPass(e.target.value)}
         />
 
-        <button onClick={()=>{
-          if(adminPass === ADMIN_PASSWORD){
+        <button style={styles.button} onClick={() => {
+          if (adminPass === ADMIN_PASSWORD) {
             setIsAdmin(true);
-          } else alert("Wrong password");
+          } else {
+            alert("Wrong password");
+          }
         }}>
           Login
         </button>
@@ -98,111 +118,134 @@ export default function App() {
               style={styles.input}
               placeholder="Event Name"
               value={newEvent}
-              onChange={(e)=>setNewEvent(e.target.value)}
+              onChange={(e) => setNewEvent(e.target.value)}
             />
 
-            <button onClick={async ()=>{
+            <button style={styles.button} onClick={async () => {
               const clean = newEvent.trim();
+              if (!clean) return alert("Enter event name");
 
-              if(!clean) return alert("Enter event name");
-
-              await setDoc(doc(db,"events",clean),{
-                judges:[]
+              await setDoc(doc(db, "events", clean), {
+                judges: []
               });
 
               setEventName(clean);
               setNewEvent("");
-              loadEvents();
-              loadJudges(clean);
+              await loadEvents();
+              await loadJudges(clean);
             }}>
               Create Event
             </button>
 
             <h3>Select Event</h3>
 
-            {events.map(e=>(
-              <button key={e.id}
-                onClick={()=>{
+            {events.map(e => (
+              <button
+                key={e.id}
+                style={styles.button}
+                onClick={() => {
                   setEventName(e.id);
                   loadJudges(e.id);
-                }}>
+                }}
+              >
                 {e.id}
               </button>
             ))}
 
-            <h3>Add Judges (max 6)</h3>
+            <h3>Add Judge (max 6)</h3>
 
             <input
               style={styles.input}
               placeholder="Judge Name"
               value={newJudge}
-              onChange={(e)=>setNewJudge(e.target.value)}
+              onChange={(e) => setNewJudge(e.target.value)}
             />
 
-            <button onClick={async ()=>{
-              const cleanEvent = eventName.trim();
-              const cleanJudge = newJudge.trim();
+            <button style={styles.button} onClick={async () => {
+              if (!eventName) return alert("Select event first");
+              if (!newJudge.trim()) return alert("Enter judge name");
 
-              if(!cleanEvent) return alert("Select event first");
-              if(!cleanJudge) return alert("Enter judge name");
-
-              const ref = doc(db,"events",cleanEvent);
+              const ref = doc(db, "events", eventName);
               const snap = await getDoc(ref);
 
-              if(!snap.exists()) return alert("Event not found");
+              if (!snap.exists()) return alert("Event not found");
 
               const current = snap.data().judges || [];
 
-              if(current.length >= 6){
+              if (current.length >= 6) {
                 return alert("Max 6 judges");
               }
 
-              await updateDoc(ref,{
-                judges:[...current, cleanJudge]
+              await updateDoc(ref, {
+                judges: [...current, newJudge.trim()]
               });
 
               setNewJudge("");
-              loadJudges(cleanEvent); // 🔥 FORCE REFRESH
+              await loadJudges(eventName);
             }}>
               Add Judge
             </button>
 
             <h4>Current Judges:</h4>
-            {judges.map(j => <div key={j}>{j}</div>)}
+            {judges.map(j => (
+              <div key={j}>{j}</div>
+            ))}
+
+            <h3>Delete Event</h3>
+
+            <button style={styles.button} onClick={async () => {
+              if (!eventName) return alert("Select event");
+
+              if (window.confirm("Delete this event?")) {
+                await deleteDoc(doc(db, "events", eventName));
+                setEventName("");
+                setJudges([]);
+                await loadEvents();
+              }
+            }}>
+              Delete Selected Event
+            </button>
           </>
         )}
 
-        <button onClick={()=>setScreen("home")}>Home</button>
+        <button style={styles.button} onClick={() => setScreen("home")}>
+          Home
+        </button>
       </div>
     );
   }
 
-  // JUDGE LOGIN
+  // ================= JUDGE LOGIN =================
   if (screen === "judge") {
     return (
       <div style={styles.container}>
 
         <h2>Select Event</h2>
 
-        {events.map(e=>(
-          <button key={e.id}
-            onClick={()=>{
+        {events.map(e => (
+          <button
+            key={e.id}
+            style={styles.button}
+            onClick={() => {
               setEventName(e.id);
               loadJudges(e.id);
-            }}>
+            }}
+          >
             {e.id}
           </button>
         ))}
 
         <h3>Select Judge</h3>
 
-        {judges.map(j=>(
-          <button key={j}>
+        {judges.map(j => (
+          <button key={j} style={styles.button}>
             {j}
           </button>
         ))}
 
-        <button onClick={()=>setScreen("home")}>Home</button>
+        <button style={styles.button} onClick={() => setScreen("home")}>
+          Home
+        </button>
       </div>
     );
   }
