@@ -66,7 +66,7 @@ export default function App() {
 
   useEffect(() => {
     if (screen === "judgeLogin") loadEvents();
-    if (screen.includes("leaderboard")) loadScores();
+    if (screen.includes("leaderboard") || screen.includes("top")) loadScores();
   }, [screen]);
 
   const styles = {
@@ -80,7 +80,6 @@ export default function App() {
   };
 
   function buildLeaderboard(filterFn = () => true, limit = null) {
-
     let data = scoresDB
       .filter(s => s.event === eventName)
       .filter(filterFn);
@@ -88,21 +87,20 @@ export default function App() {
     data.sort((a,b)=>b.total - a.total);
 
     if (limit) data = data.slice(0, limit);
-
     return data;
   }
 
   function formatRow(s, i){
-    const genderTag = s.gender === "Female" ? "F" : "M";
+    const g = s.gender === "Female" ? "F" : "M";
+
+    const base =
+      Object.values(s.scores || {}).reduce((a,b)=>a+b,0) + (s.tyres || 0);
 
     const deductionsText = s.deductions?.length
       ? " - (" + s.deductions.join(", ") + ")"
       : "";
 
-    const baseScore =
-      Object.values(s.scores || {}).reduce((a,b)=>a+b,0) + (s.tyres || 0);
-
-    return `#${i+1}${genderTag} | ${s.car} | ${s.carClass || ""} | ${baseScore}${deductionsText} ${s.total}`;
+    return `#${i+1}${g} | ${s.car} | ${s.carClass || ""} | ${base}${deductionsText} ${s.total}`;
   }
 
   // HOME
@@ -123,6 +121,44 @@ export default function App() {
     );
   }
 
+  // JUDGE LOGIN
+  if (screen === "judgeLogin") {
+    return (
+      <div style={styles.container}>
+
+        <h2>Add Event</h2>
+        <input style={styles.input} value={newEvent} onChange={e=>setNewEvent(e.target.value)} placeholder="Event"/>
+        <input style={styles.input} value={newJudges} onChange={e=>setNewJudges(e.target.value)} placeholder="Judges comma separated"/>
+
+        <button style={styles.button} onClick={async ()=>{
+          await setDoc(doc(db,"events",newEvent),{
+            judges:newJudges.split(",").map(j=>j.trim())
+          });
+          loadEvents();
+        }}>Add Event</button>
+
+        <h2>Select Event</h2>
+
+        {events.map((e,i)=>(
+          <button key={i} style={styles.button} onClick={()=>{
+            setEventName(e.id);
+            setJudges(e.judges);
+          }}>{e.id}</button>
+        ))}
+
+        <h3>Select Judge</h3>
+
+        {judges.map((j,i)=>(
+          <button key={i} style={styles.button} onClick={()=>{setJudge(j);goTo("score");}}>
+            {j}
+          </button>
+        ))}
+
+        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
+      </div>
+    );
+  }
+
   // SCORE
   if (screen === "score") {
     return (
@@ -131,8 +167,8 @@ export default function App() {
         <h2>{eventName}</h2>
         <h3>{judge}</h3>
 
-        <input style={styles.input} placeholder="Car # / Rego" value={car} onChange={(e)=>setCar(e.target.value)} />
-        <input style={styles.input} placeholder="Driver Name" value={driverName} onChange={(e)=>setDriverName(e.target.value)} />
+        <input style={styles.input} value={car} onChange={e=>setCar(e.target.value)} placeholder="Car"/>
+        <input style={styles.input} value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="Driver"/>
 
         <div style={styles.row}>
           <button style={{...styles.button,...(gender==="Male"?styles.active:{})}} onClick={()=>setGender("Male")}>Male</button>
@@ -208,7 +244,6 @@ export default function App() {
             total
           });
 
-          // FULL RESET
           setScores({});
           setTyres(0);
           setDeductions([]);
@@ -225,17 +260,23 @@ export default function App() {
     );
   }
 
-  // LEADERBOARD
-  if (screen === "leaderboard") {
-    const data = buildLeaderboard();
+  // LEADERBOARDS (ALL)
+  const renderBoard = (filter, title, limit=null) => {
+    const data = buildLeaderboard(filter, limit);
     return (
       <div style={styles.container}>
-        <h2>Leaderboard</h2>
+        <h2>{title}</h2>
         {data.map((s,i)=>(<p key={i}>{formatRow(s,i)}</p>))}
         <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
       </div>
     );
-  }
+  };
+
+  if (screen === "leaderboard") return renderBoard(()=>true,"Leaderboard");
+  if (screen === "classLeaderboard") return renderBoard(()=>true,"Class Leaderboard");
+  if (screen === "femaleLeaderboard") return renderBoard(s=>s.gender==="Female","Female");
+  if (screen === "top150") return renderBoard(()=>true,"Top 150",150);
+  if (screen === "top30") return renderBoard(()=>true,"Top 30",30);
 
   return null;
 }
