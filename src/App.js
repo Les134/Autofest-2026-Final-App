@@ -63,7 +63,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (screen === "judgeLogin") loadEvents();
+    loadEvents();
     if (screen === "leaderboard") loadScores();
   }, [screen]);
 
@@ -97,36 +97,81 @@ export default function App() {
     return (
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
-        <button style={styles.button} onClick={()=>goTo("judgeLogin")}>Judge Login</button>
-        <button style={styles.button} onClick={()=>goTo("score")}>Resume Judging</button>
-        <button style={styles.button} onClick={()=>goTo("leaderboard")}>Leaderboard</button>
+
+        <button style={styles.button} onClick={()=>goTo("judgeLogin")}>
+          Judge Login
+        </button>
+
+        <button style={styles.button} onClick={()=>goTo("admin")}>
+          Admin Setup
+        </button>
+
+        <button style={styles.button} onClick={()=>goTo("leaderboard")}>
+          Leaderboard
+        </button>
       </div>
     );
   }
 
-  // LOGIN + ADMIN
+  // JUDGE LOGIN
   if (screen === "judgeLogin") {
     return (
       <div style={styles.container}>
 
-        <h2>Event Setup / Judge Login</h2>
+        <h2>Select Event</h2>
 
-        <input style={styles.input} placeholder="Admin Password"
-          value={adminPass} onChange={(e)=>setAdminPass(e.target.value)} />
+        {events.filter(e=>!e.archived).map(e=>(
+          <button key={e.id} style={styles.button} onClick={()=>{
+            setEventName(e.id);
+            setJudges(e.judges || []);
+          }}>
+            {e.id}
+          </button>
+        ))}
+
+        <h3>Select Judge</h3>
+
+        {judges.map(j=>(
+          <button key={j} style={styles.button}
+            onClick={()=>{setJudge(j);goTo("score");}}>
+            {j}
+          </button>
+        ))}
+
+        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
+
+      </div>
+    );
+  }
+
+  // ADMIN
+  if (screen === "admin") {
+    return (
+      <div style={styles.container}>
+
+        <h2>Admin Setup</h2>
+
+        <input
+          style={styles.input}
+          placeholder="Password"
+          value={adminPass}
+          onChange={(e)=>setAdminPass(e.target.value)}
+        />
 
         <button style={styles.button} onClick={()=>{
           if(adminPass === ADMIN_PASSWORD){
             setIsAdmin(true);
-            alert("Admin Enabled");
           } else alert("Wrong password");
         }}>
-          Admin Login
+          Login
         </button>
 
         {isAdmin && (
           <>
-            <input style={styles.input} placeholder="Event Name"
-              value={newEvent} onChange={(e)=>setNewEvent(e.target.value)} />
+            <h3>Create Event</h3>
+            <input style={styles.input}
+              value={newEvent}
+              onChange={(e)=>setNewEvent(e.target.value)} />
 
             <button style={styles.button} onClick={async ()=>{
               await setDoc(doc(db,"events",newEvent),{
@@ -136,61 +181,56 @@ export default function App() {
               });
               setNewEvent("");
               loadEvents();
-            }}>Create Event</button>
+            }}>
+              Create
+            </button>
 
-            <input style={styles.input} placeholder="Judge Name"
-              value={newJudge} onChange={(e)=>setNewJudge(e.target.value)} />
+            <h3>Select Event</h3>
+            {events.map(e=>(
+              <button key={e.id} style={styles.button} onClick={()=>{
+                setEventName(e.id);
+                setJudges(e.judges||[]);
+              }}>
+                {e.id} {e.locked?"🔒":""}
+              </button>
+            ))}
+
+            <h3>Add Judge</h3>
+            <input style={styles.input}
+              value={newJudge}
+              onChange={(e)=>setNewJudge(e.target.value)} />
 
             <button style={styles.button} onClick={async ()=>{
               const ev = events.find(e=>e.id===eventName);
-              if(ev?.locked) return alert("Event locked");
-              if((ev?.judges || []).length >= 6) return alert("Max 6 judges");
+              if(ev.locked) return alert("Locked");
+              if(ev.judges.length>=6) return alert("Max 6");
 
               await updateDoc(doc(db,"events",eventName),{
-                judges:[...(ev?.judges || []), newJudge]
+                judges:[...ev.judges,newJudge]
               });
 
               setNewJudge("");
               loadEvents();
-            }}>Add Judge</button>
-
-            <button style={styles.button} onClick={()=>updateDoc(doc(db,"events",eventName),{locked:true})}>
-              🔒 Lock Event
-            </button>
-
-            <button style={styles.button} onClick={()=>updateDoc(doc(db,"events",eventName),{archived:true})}>
-              📦 Archive Event
-            </button>
-
-            <button style={styles.button} onClick={async ()=>{
-              const ev = events.find(e=>e.id===eventName);
-              if(ev?.locked) return alert("Cannot delete locked event");
-              await deleteDoc(doc(db,"events",eventName));
-              loadEvents();
             }}>
-              Delete Event
+              Add Judge
+            </button>
+
+            <button style={styles.button}
+              onClick={()=>updateDoc(doc(db,"events",eventName),{locked:true})}>
+              🔒 Lock
+            </button>
+
+            <button style={styles.button}
+              onClick={()=>updateDoc(doc(db,"events",eventName),{archived:true})}>
+              📦 Archive
+            </button>
+
+            <button style={styles.button}
+              onClick={()=>deleteDoc(doc(db,"events",eventName))}>
+              Delete
             </button>
           </>
         )}
-
-        <h3>Select Event</h3>
-
-        {events.filter(e=>!e.archived).map(e=>(
-          <button key={e.id} style={styles.button} onClick={()=>{
-            setEventName(e.id);
-            setJudges(e.judges||[]);
-          }}>
-            {e.id} {e.locked ? "🔒":""}
-          </button>
-        ))}
-
-        <h3>Select Judge</h3>
-
-        {judges.map(j=>(
-          <button key={j} style={styles.button} onClick={()=>{setJudge(j);goTo("score");}}>
-            {j}
-          </button>
-        ))}
 
         <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
       </div>
@@ -204,7 +244,7 @@ export default function App() {
         <h2>{eventName}</h2>
         <h3>{judge}</h3>
 
-        <input style={styles.input} placeholder="Car Rego"
+        <input style={styles.input} placeholder="Car"
           value={car} onChange={(e)=>setCar(e.target.value)} />
 
         <div style={styles.row}>
@@ -236,24 +276,22 @@ export default function App() {
         ))}
 
         <div style={styles.row}>
-          <button style={{...styles.button,...(tyres>=5?styles.active:{})}} onClick={()=>setTyres(t=>t>=5?t-5:5)}>Left +5</button>
-          <button style={{...styles.button,...(tyres===10?styles.active:{})}} onClick={()=>setTyres(t=>t===10?5:10)}>Right +5</button>
+          <button onClick={()=>setTyres(t=>t>=5?t-5:5)}>Left +5</button>
+          <button onClick={()=>setTyres(t=>t===10?5:10)}>Right +5</button>
         </div>
 
         {["Reversing","Stopping","Barrier","Fire"].map(d=>(
-          <button key={d}
-            style={{...styles.button,...(deductions.includes(d)?styles.active:{})}}
-            onClick={()=>setDeductions(prev =>
-              prev.includes(d)?prev.filter(x=>x!==d):[...prev,d]
-            )}>
+          <button key={d} onClick={()=>setDeductions(prev =>
+            prev.includes(d)?prev.filter(x=>x!==d):[...prev,d]
+          )}>
             {d}
           </button>
         ))}
 
-        <h3>Total: {Object.values(scores).reduce((a,b)=>a+b,0) + tyres - deductions.length*10}</h3>
+        <h3>Total: {Object.values(scores).reduce((a,b)=>a+b,0)+tyres-deductions.length*10}</h3>
 
-        <button style={styles.button} onClick={async ()=>{
-          const total = Object.values(scores).reduce((a,b)=>a+b,0) + tyres - deductions.length*10;
+        <button onClick={async ()=>{
+          const total = Object.values(scores).reduce((a,b)=>a+b,0)+tyres-deductions.length*10;
 
           await addDoc(collection(db,"scores"),{
             event:eventName,
@@ -277,7 +315,7 @@ export default function App() {
           Submit
         </button>
 
-        <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
+        <button onClick={()=>goTo("home")}>Home</button>
       </div>
     );
   }
@@ -289,22 +327,18 @@ export default function App() {
     return (
       <div style={styles.container}>
         <h2>Leaderboard</h2>
-
-        <button style={styles.button} onClick={printPage}>
-          Print
-        </button>
+        <button onClick={printPage}>Print</button>
 
         {data.map((s,i)=>(
           <p key={i}>{formatRow(s,i)}</p>
         ))}
 
-        <button style={styles.button} onClick={()=>goTo("home")}>
-          Home
-        </button>
+        <button onClick={()=>goTo("home")}>Home</button>
       </div>
     );
   }
 
   return null;
 }
+
     
