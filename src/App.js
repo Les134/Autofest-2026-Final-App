@@ -1,10 +1,6 @@
 import React, { useState } from "react";
 import { db } from "./firebase";
-import {
-  collection,
-  getDocs,
-  addDoc
-} from "firebase/firestore";
+import { collection, getDocs, addDoc } from "firebase/firestore";
 
 export default function App() {
 
@@ -12,15 +8,12 @@ export default function App() {
 
   const [eventName, setEventName] = useState("");
   const [judges, setJudges] = useState([]);
-
   const [judge, setJudge] = useState("");
 
   const [car, setCar] = useState("");
   const [gender, setGender] = useState("");
   const [carClass, setCarClass] = useState("");
-
   const [scores, setScores] = useState({});
-  const [deductions, setDeductions] = useState({});
 
   const categories = [
     "Instant Smoke",
@@ -31,15 +24,16 @@ export default function App() {
 
   const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl / Rotary"];
 
-  // ✅ FIXED EVENT LOAD (STRICT MATCH)
+  // ✅ FORCE NAVIGATION FIX
+  function goTo(screenName){
+    setScreen("");           // clear first
+    setTimeout(() => {
+      setScreen(screenName); // then set
+    }, 10);
+  }
+
   async function loadEvent(event) {
-    if (!event) {
-      alert("Enter Event Name");
-      return;
-    }
-
     const snap = await getDocs(collection(db, "events"));
-
     let found = false;
 
     snap.forEach(d => {
@@ -56,7 +50,7 @@ export default function App() {
   }
 
   // =========================
-  // HOME (UNCHANGED LAYOUT)
+  // HOME
   // =========================
   if (screen === "home") {
     return (
@@ -64,37 +58,31 @@ export default function App() {
 
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        <button onClick={() => setScreen("judgeLogin")}>
+        <button onClick={() => goTo("judgeLogin")}>
           Judge Login
         </button>
 
-        <button onClick={() => {
-          if (!judge) {
-            alert("Login as judge first");
-            return;
-          }
-          setScreen("score");
-        }}>
+        <button onClick={() => goTo("score")}>
           Resume Judging
         </button>
 
-        <button onClick={() => setScreen("leaderboard")}>
+        <button onClick={() => goTo("leaderboard")}>
           Leaderboard
         </button>
 
-        <button onClick={() => setScreen("classLeaderboard")}>
+        <button onClick={() => goTo("classLeaderboard")}>
           Class Leaderboard
         </button>
 
-        <button onClick={() => setScreen("female")}>
+        <button onClick={() => goTo("female")}>
           Female Overall
         </button>
 
-        <button onClick={() => setScreen("top150")}>
+        <button onClick={() => goTo("top150")}>
           Top 150
         </button>
 
-        <button onClick={() => setScreen("top30")}>
+        <button onClick={() => goTo("top30")}>
           Top 30 Finals
         </button>
 
@@ -103,7 +91,7 @@ export default function App() {
   }
 
   // =========================
-  // JUDGE LOGIN (FIXED)
+  // JUDGE LOGIN
   // =========================
   if (screen === "judgeLogin") {
     return (
@@ -121,20 +109,16 @@ export default function App() {
           Load Judges
         </button>
 
-        {judges.length === 0 && (
-          <p>No judges loaded</p>
-        )}
-
         {judges.map((j, i) => (
           <button key={i} onClick={() => {
             setJudge(j);
-            setScreen("score"); // ✅ GUARANTEED NAVIGATION
+            goTo("score"); // ✅ GUARANTEED NAV
           }}>
             {j}
           </button>
         ))}
 
-        <button onClick={() => setScreen("home")}>
+        <button onClick={() => goTo("home")}>
           Home
         </button>
 
@@ -143,7 +127,7 @@ export default function App() {
   }
 
   // =========================
-  // SCORE SCREEN (UNCHANGED UI)
+  // SCORE
   // =========================
   if (screen === "score") {
     return (
@@ -175,8 +159,7 @@ export default function App() {
           <div key={cat}>
             <p>{cat}</p>
             {[...Array(20)].map((_, i) => (
-              <button
-                key={i}
+              <button key={i}
                 onClick={() =>
                   setScores(prev => ({ ...prev, [cat]: i + 1 }))
                 }
@@ -189,47 +172,30 @@ export default function App() {
 
         <button onClick={async () => {
 
-          if (!judge) {
-            alert("Judge not selected");
-            return;
-          }
+          if (!judge) return alert("Select judge");
+          if (!car) return alert("Enter car");
 
-          if (!car) {
-            alert("Enter car number");
-            return;
-          }
+          let total = Object.values(scores).reduce((a,b)=>a+b,0);
 
-          if (Object.keys(scores).length !== categories.length) {
-            alert("Complete all scores");
-            return;
-          }
+          await addDoc(collection(db,"scores"),{
+            event:eventName,
+            judge,
+            car,
+            gender,
+            carClass,
+            total
+          });
 
-          let total = Object.values(scores).reduce((a, b) => a + b, 0);
+          alert("Submitted");
 
-          try {
-            await addDoc(collection(db, "scores"), {
-              event: eventName,
-              judge,
-              car,
-              gender,
-              carClass,
-              total
-            });
-
-            alert("Submitted");
-
-            setScores({});
-            setCar("");
-
-          } catch (err) {
-            alert("Error saving score");
-          }
+          setScores({});
+          setCar("");
 
         }}>
           Submit
         </button>
 
-        <button onClick={() => setScreen("home")}>
+        <button onClick={() => goTo("home")}>
           Home
         </button>
 
