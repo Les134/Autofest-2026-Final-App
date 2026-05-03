@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from "react";
 
+// FIREBASE
 import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDocs
-} from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCSCBgg7bR1FYMNqOZGJQwXDqe79eXyAAM",
@@ -35,6 +31,7 @@ export default function App() {
   const [lockedEvents, setLockedEvents] = useState({});
   const [results, setResults] = useState([]);
 
+  // SCORING
   const [car, setCar] = useState("");
   const [gender, setGender] = useState("");
   const [carClass, setCarClass] = useState("");
@@ -57,14 +54,17 @@ export default function App() {
 
   const styles = {
     container:{background:"#000",color:"#fff",minHeight:"100vh",padding:"15px"},
-    button:{padding:"10px",margin:"4px",background:"#1c2333",color:"#fff"},
+    button:{padding:"10px",margin:"4px",background:"#1c2333",color:"#fff",border:"1px solid #333"},
     active:{background:"red"},
     row:{display:"flex",flexWrap:"wrap",gap:"4px"},
     input:{padding:"10px",margin:"6px 0",width:"100%"},
     scoreBtn:{width:"36px",margin:"2px"}
   };
 
-  useEffect(()=>{ loadScores(); },[]);
+  // LOAD SCORES
+  useEffect(()=>{
+    loadScores();
+  },[]);
 
   async function loadScores(){
     const snap = await getDocs(collection(db,"scores"));
@@ -107,11 +107,17 @@ export default function App() {
 
     await loadScores();
 
-    setCar(""); setGender(""); setCarClass("");
-    setScores({}); setTyres(0); setDeductions([]);
+    setCar("");
+    setGender("");
+    setCarClass("");
+    setScores({});
+    setTyres(0);
+    setDeductions([]);
   }
 
-  function printPage(){ window.print(); }
+  function printPage(){
+    window.print();
+  }
 
   function formatRow(r,i){
     const d = r.deductions?.length ? ` - (${r.deductions.join(", ")})` : "";
@@ -122,25 +128,194 @@ export default function App() {
     return results.filter(r=>r.event===selectedEvent);
   }
 
-  function sortResults(list){
+  function sort(list){
     return [...list].sort((a,b)=>b.total-a.total);
   }
 
-  // ---------- SCREENS ----------
-
+  // HOME
   if(screen==="home"){
     return(
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
-        <button style={styles.button} onClick={()=>setScreen("judge")}>Judge Login</button>
-        <button style={styles.button} onClick={()=>setScreen("setup")}>Setup Event</button>
-        <button style={styles.button} onClick={()=>setScreen("leaderboard")}>Leaderboards</button>
+
+        <button style={styles.button} onClick={()=>setScreen("judge")}>
+          Judge Login
+        </button>
+
+        <button style={styles.button} onClick={()=>setScreen("setup")}>
+          Setup Event
+        </button>
+
+        <button style={styles.button} onClick={()=>setScreen("leaderboard")}>
+          Leaderboards
+        </button>
       </div>
     );
   }
 
+  // SETUP
+  if(screen==="setup"){
+    return(
+      <div style={styles.container}>
+        <h2>Setup Event</h2>
+
+        <input style={styles.input}
+          placeholder="Event Name"
+          value={eventName}
+          onChange={(e)=>setEventName(e.target.value)}
+        />
+
+        <button style={styles.button} onClick={()=>{
+          const name = eventName.trim();
+          if(!name) return;
+          setEvents(prev=>({...prev,[name]:[]}));
+          setSelectedEvent(name);
+          setJudges([]);
+          setEventName("");
+        }}>
+          Create Event
+        </button>
+
+        {Object.keys(events).map(e=>(
+          <button key={e} style={styles.button}
+            onClick={()=>{setSelectedEvent(e);setJudges(events[e]);}}>
+            {e}
+          </button>
+        ))}
+
+        <input style={styles.input}
+          placeholder="Judge Name"
+          value={newJudge}
+          onChange={(e)=>setNewJudge(e.target.value)}
+        />
+
+        <button style={styles.button} onClick={()=>{
+          if(!selectedEvent) return;
+          if(judges.length>=6) return;
+
+          const updated=[...judges,newJudge];
+
+          setEvents(prev=>({...prev,[selectedEvent]:updated}));
+          setJudges(updated);
+          setNewJudge("");
+        }}>
+          Add Judge
+        </button>
+
+        <button style={styles.button} onClick={()=>setScreen("home")}>
+          Home
+        </button>
+      </div>
+    );
+  }
+
+  // JUDGE LOGIN
+  if(screen==="judge"){
+    return(
+      <div style={styles.container}>
+        <h2>Select Event</h2>
+
+        {Object.keys(events).map(e=>(
+          <button key={e} style={styles.button}
+            onClick={()=>{setSelectedEvent(e);setJudges(events[e]);}}>
+            {e}
+          </button>
+        ))}
+
+        <h3>Select Judge</h3>
+
+        {judges.map(j=>(
+          <button key={j} style={styles.button}
+            onClick={()=>{setSelectedJudge(j);setScreen("score");}}>
+            {j}
+          </button>
+        ))}
+
+        <button style={styles.button} onClick={()=>setScreen("home")}>
+          Home
+        </button>
+      </div>
+    );
+  }
+
+  // SCORE
+  if(screen==="score"){
+    return(
+      <div style={styles.container}>
+
+        <h2>{selectedEvent}</h2>
+        <h3>{selectedJudge}</h3>
+
+        <input style={styles.input}
+          placeholder="Car #"
+          value={car}
+          onChange={(e)=>setCar(e.target.value)}
+        />
+
+        <div style={styles.row}>
+          <button style={{...styles.button,...(gender==="M"?styles.active:{})}}
+            onClick={()=>setGender("M")}>M</button>
+
+          <button style={{...styles.button,...(gender==="F"?styles.active:{})}}
+            onClick={()=>setGender("F")}>F</button>
+
+          {classes.map(c=>(
+            <button key={c}
+              style={{...styles.button,...(carClass===c?styles.active:{})}}
+              onClick={()=>setCarClass(c)}>
+              {c}
+            </button>
+          ))}
+
+          <button style={styles.button} onClick={()=>setTyres(t=>t+5)}>
+            Tyre +5
+          </button>
+
+          {deductionList.map(d=>(
+            <button key={d}
+              style={{...styles.button,...(deductions.includes(d)?styles.active:{})}}
+              onClick={()=>toggleDeduction(d)}>
+              {d}
+            </button>
+          ))}
+        </div>
+
+        {categories.map(cat=>(
+          <div key={cat}>
+            <p>{cat}</p>
+            <div style={styles.row}>
+              {[...Array(20)].map((_,i)=>(
+                <button key={i}
+                  style={{...styles.scoreBtn,...(scores[cat]===i+1?styles.active:{})}}
+                  onClick={()=>setScore(cat,i+1)}>
+                  {i+1}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <h2>Total: {totalScore()}</h2>
+
+        <button style={styles.button} onClick={submitScore}>
+          Submit
+        </button>
+
+        <button style={styles.button}
+          onClick={()=>setLockedEvents(prev=>({...prev,[selectedEvent]:true}))}>
+          🔒 Lock Event
+        </button>
+
+        <button style={styles.button} onClick={()=>setScreen("judge")}>
+          Back
+        </button>
+      </div>
+    );
+  }
+
+  // LEADERBOARD
   if(screen==="leaderboard"){
-    const eventData = getEventResults();
+    const data = getEventResults();
 
     return(
       <div style={styles.container}>
@@ -149,21 +324,15 @@ export default function App() {
         <button style={styles.button} onClick={printPage}>Print</button>
 
         <h3>Overall</h3>
-        {sortResults(eventData).map((r,i)=>(
-          <div key={i}>{formatRow(r,i)}</div>
-        ))}
+        {sort(data).map((r,i)=><div key={i}>{formatRow(r,i)}</div>)}
 
         <h3>Female</h3>
-        {sortResults(eventData.filter(r=>r.gender==="F")).map((r,i)=>(
-          <div key={i}>{formatRow(r,i)}</div>
-        ))}
+        {sort(data.filter(r=>r.gender==="F")).map((r,i)=><div key={i}>{formatRow(r,i)}</div>)}
 
         {classes.map(c=>(
           <div key={c}>
             <h3>{c}</h3>
-            {sortResults(eventData.filter(r=>r.carClass===c)).map((r,i)=>(
-              <div key={i}>{formatRow(r,i)}</div>
-            ))}
+            {sort(data.filter(r=>r.carClass===c)).map((r,i)=><div key={i}>{formatRow(r,i)}</div>)}
           </div>
         ))}
 
@@ -174,7 +343,5 @@ export default function App() {
     );
   }
 
-  // (rest of your working setup + scoring screens remain unchanged)
-
-  return <div />;
+  return null;
 }
