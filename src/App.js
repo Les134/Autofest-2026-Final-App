@@ -32,33 +32,18 @@ export default function App() {
     setScreen(screenName);
   }
 
-  // ✅ DEBUG VERSION
   async function loadEvents() {
-    try {
-      const snap = await getDocs(collection(db, "events"));
+    const snap = await getDocs(collection(db, "events"));
+    const list = [];
 
-      console.log("RAW SNAP:", snap);
-
-      const list = [];
-
-      snap.forEach(doc => {
-        console.log("DOC FOUND:", doc.id, doc.data());
-        list.push({
-          id: doc.id,
-          judges: doc.data().judges || []
-        });
+    snap.forEach(doc => {
+      list.push({
+        id: doc.id,
+        judges: doc.data().judges || []
       });
+    });
 
-      console.log("FINAL EVENTS:", list);
-
-      alert("Events found: " + list.length);
-
-      setEvents(list);
-
-    } catch (err) {
-      console.error("FIRESTORE ERROR:", err);
-      alert("Firestore error: " + err.message);
-    }
+    setEvents(list);
   }
 
   useEffect(() => {
@@ -205,6 +190,77 @@ export default function App() {
             </div>
           </div>
         ))}
+
+        {/* TYRES */}
+        <p>Tyres (+5 each)</p>
+        <div style={styles.row}>
+          <button onClick={() => setTyres(prev => prev >= 5 ? prev - 5 : prev)}>
+            -5
+          </button>
+          <button onClick={() => setTyres(prev => prev + 5)}>
+            +5
+          </button>
+        </div>
+
+        {/* DEDUCTIONS */}
+        <p>Deductions (-10 each)</p>
+        <div style={styles.row}>
+          {["Reversing","Stopping","Barrier","Fire"].map(d => (
+            <button
+              key={d}
+              style={{
+                background: deductions.includes(d) ? "#ff0000" : "#1c2333",
+                color: "#fff"
+              }}
+              onClick={() => {
+                setDeductions(prev =>
+                  prev.includes(d)
+                    ? prev.filter(x => x !== d)
+                    : [...prev, d]
+                );
+              }}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+
+        {/* TOTAL DISPLAY */}
+        <h3>
+          Total: {
+            Object.values(scores).reduce((a,b)=>a+b,0)
+            + tyres
+            - (deductions.length * 10)
+          }
+        </h3>
+
+        <button style={styles.button} onClick={async () => {
+
+          let base = Object.values(scores).reduce((a,b)=>a+b,0);
+          let total = base + tyres - (deductions.length * 10);
+
+          await addDoc(collection(db,"scores"),{
+            event:eventName,
+            judge,
+            car,
+            gender,
+            carClass,
+            scores,
+            tyres,
+            deductions,
+            total
+          });
+
+          alert("Submitted");
+
+          setScores({});
+          setTyres(0);
+          setDeductions([]);
+          setCar("");
+
+        }}>
+          Submit
+        </button>
 
         <button style={styles.button} onClick={() => goTo("home")}>
           Home
