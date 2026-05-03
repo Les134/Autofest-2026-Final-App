@@ -30,8 +30,6 @@ export default function App() {
   const [newJudge, setNewJudge] = useState("");
 
   const [car, setCar] = useState("");
-  const [driverName, setDriverName] = useState("");
-
   const [gender, setGender] = useState("");
   const [carClass, setCarClass] = useState("");
 
@@ -66,7 +64,7 @@ export default function App() {
 
   useEffect(() => {
     if (screen === "judgeLogin") loadEvents();
-    if (screen.includes("leaderboard")) loadScores();
+    if (screen === "leaderboard") loadScores();
   }, [screen]);
 
   const styles = {
@@ -85,22 +83,14 @@ export default function App() {
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        <button style={styles.button} onClick={()=>goTo("judgeLogin")}>
-          Judge Login
-        </button>
-
-        <button style={styles.button} onClick={()=>goTo("score")}>
-          Resume Judging
-        </button>
-
-        <button style={styles.button} onClick={()=>goTo("leaderboard")}>
-          Leaderboard
-        </button>
+        <button style={styles.button} onClick={()=>goTo("judgeLogin")}>Judge Login</button>
+        <button style={styles.button} onClick={()=>goTo("score")}>Resume Judging</button>
+        <button style={styles.button} onClick={()=>goTo("leaderboard")}>Leaderboard</button>
       </div>
     );
   }
 
-  // ✅ FIXED JUDGE LOGIN + ADMIN
+  // 🔥 FIXED LOGIN PAGE ONLY
   if (screen === "judgeLogin") {
     return (
       <div style={styles.container}>
@@ -144,11 +134,10 @@ export default function App() {
             <button
               style={styles.button}
               onClick={async ()=>{
-                if(!newEvent) return alert("Enter event name");
+                if(!newEvent) return alert("Enter event");
 
                 await setDoc(doc(db,"events",newEvent),{
-                  judges:[],
-                  locked:false
+                  judges:[]
                 });
 
                 setNewEvent("");
@@ -158,7 +147,7 @@ export default function App() {
               Add Event
             </button>
 
-            <h3>Add Judges (Select Event First)</h3>
+            <h3>Add Judge (Select Event First)</h3>
 
             <input
               style={styles.input}
@@ -171,7 +160,7 @@ export default function App() {
               style={styles.button}
               onClick={async ()=>{
                 if(!eventName) return alert("Select event first");
-                if(!newJudge) return alert("Enter judge name");
+                if(!newJudge) return alert("Enter judge");
 
                 const ev = events.find(e=>e.id===eventName);
 
@@ -188,20 +177,34 @@ export default function App() {
           </>
         )}
 
-        {/* EVENT SELECT */}
+        {/* EVENTS */}
         <h3>Select Event</h3>
 
         {events.map((e,i)=>(
-          <button
-            key={i}
-            style={styles.button}
-            onClick={()=>{
-              setEventName(e.id);
-              setJudges(e.judges || []);
-            }}
-          >
-            {e.id}
-          </button>
+          <div key={i}>
+            <button
+              style={styles.button}
+              onClick={()=>{
+                setEventName(e.id);
+                setJudges(e.judges || []);
+              }}
+            >
+              {e.id}
+            </button>
+
+            {isAdmin && (
+              <button
+                onClick={async ()=>{
+                  if(window.confirm("Delete event?")){
+                    await deleteDoc(doc(db,"events",e.id));
+                    loadEvents();
+                  }
+                }}
+              >
+                Delete
+              </button>
+            )}
+          </div>
         ))}
 
         {/* JUDGES */}
@@ -234,7 +237,7 @@ export default function App() {
       <div style={styles.container}>
         <h2>{eventName}</h2>
         <h3>{judge}</h3>
-        <p>Score screen unchanged</p>
+        <p>Score screen still intact</p>
         <button style={styles.button} onClick={()=>goTo("home")}>Home</button>
       </div>
     );
