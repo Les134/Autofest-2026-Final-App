@@ -26,7 +26,6 @@ export default function App() {
   const [newEvent, setNewEvent] = useState("");
   const [newJudge, setNewJudge] = useState("");
 
-  // LOAD EVENTS
   async function loadEvents() {
     const snap = await getDocs(collection(db, "events"));
     const list = [];
@@ -34,11 +33,11 @@ export default function App() {
     setEvents(list);
   }
 
-  // LOAD JUDGES FROM FIREBASE (REAL DATA)
   async function loadJudges(eventId) {
     if (!eventId) return;
     const ref = doc(db, "events", eventId);
     const snap = await getDoc(ref);
+
     if (snap.exists()) {
       setJudges(snap.data().judges || []);
     } else {
@@ -51,42 +50,23 @@ export default function App() {
   }, []);
 
   const styles = {
-    container: {
-      background: "#000",
-      color: "#fff",
-      minHeight: "100vh",
-      padding: "15px"
-    },
-    button: {
-      width: "100%",
-      padding: "14px",
-      margin: "6px 0"
-    },
-    input: {
-      width: "100%",
-      padding: "10px",
-      margin: "6px 0"
-    }
+    container: { background: "#000", color: "#fff", minHeight: "100vh", padding: "15px" },
+    button: { width: "100%", padding: "14px", margin: "6px 0" },
+    input: { width: "100%", padding: "10px", margin: "6px 0" }
   };
 
-  // ================= HOME =================
+  // HOME
   if (screen === "home") {
     return (
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
-
-        <button style={styles.button} onClick={() => setScreen("judge")}>
-          Judge Login
-        </button>
-
-        <button style={styles.button} onClick={() => setScreen("admin")}>
-          Admin Setup
-        </button>
+        <button style={styles.button} onClick={() => setScreen("judge")}>Judge Login</button>
+        <button style={styles.button} onClick={() => setScreen("admin")}>Admin Setup</button>
       </div>
     );
   }
 
-  // ================= ADMIN =================
+  // ADMIN
   if (screen === "admin") {
     return (
       <div style={styles.container}>
@@ -196,12 +176,14 @@ export default function App() {
             <button style={styles.button} onClick={async () => {
               if (!eventName) return alert("Select event");
 
-              if (window.confirm("Delete this event?")) {
-                await deleteDoc(doc(db, "events", eventName));
-                setEventName("");
-                setJudges([]);
-                await loadEvents();
-              }
+              if (!window.confirm("Delete this event?")) return;
+
+              await deleteDoc(doc(db, "events", eventName));
+
+              // 🔥 FIX: CLEAR + REFRESH
+              setEventName("");
+              setJudges([]);
+              await loadEvents();
             }}>
               Delete Selected Event
             </button>
@@ -215,7 +197,7 @@ export default function App() {
     );
   }
 
-  // ================= JUDGE LOGIN =================
+  // JUDGE LOGIN
   if (screen === "judge") {
     return (
       <div style={styles.container}>
@@ -249,8 +231,5 @@ export default function App() {
       </div>
     );
   }
-
-  return null;
-}
 
     
