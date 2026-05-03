@@ -6,15 +6,15 @@ export default function App() {
   const [boardType, setBoardType] = useState("overall");
 
   const [events, setEvents] = useState({});
+  const [lockedEvents, setLockedEvents] = useState({});
+
   const [selectedEvent, setSelectedEvent] = useState("");
-  const [judges, setJudges] = useState([]);
   const [selectedJudge, setSelectedJudge] = useState("");
 
   const [eventName, setEventName] = useState("");
   const [newJudge, setNewJudge] = useState("");
 
   const [results, setResults] = useState([]);
-  const [lockedEvents, setLockedEvents] = useState({});
 
   const [car, setCar] = useState("");
   const [gender, setGender] = useState("");
@@ -23,6 +23,10 @@ export default function App() {
   const [tyres, setTyres] = useState({ left:false, right:false });
   const [deductions, setDeductions] = useState([]);
 
+  const classes = [
+    "V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl Open/Rotary"
+  ];
+
   const categories = [
     "Instant Smoke",
     "Volume of Smoke",
@@ -30,49 +34,55 @@ export default function App() {
     "Driver Skill & Control"
   ];
 
-  const classes = [
-    "V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl Open/Rotary"
-  ];
-
   const deductionList = ["Reversing","Stopping","Barrier","Fire"];
 
   const styles = {
     container:{background:"#000",color:"#fff",minHeight:"100vh",padding:"18px"},
     button:{padding:"16px",margin:"6px 0",background:"#2a2a2a",color:"#fff",border:"2px solid #555"},
-    bigButton:{
-      padding:"22px",
-      margin:"10px 0",
-      background:"#ff2a2a",
-      color:"#fff",
-      fontSize:"20px",
-      border:"2px solid #ff0000"
-    },
+    bigButton:{padding:"22px",margin:"10px 0",background:"#ff2a2a",color:"#fff",fontSize:"20px"},
     active:{background:"#ff2a2a"},
     row:{display:"flex",flexWrap:"wrap",gap:"6px"},
     input:{padding:"14px",margin:"6px 0",width:"100%",background:"#111",color:"#fff",border:"2px solid #555"},
     scoreBtn:{width:"44px",height:"44px",background:"#2a2a2a",border:"2px solid #555",color:"#fff"}
   };
 
+  // ---------- EVENT ----------
+  function createEvent(){
+    if(!eventName) return;
+
+    setEvents(prev=>({
+      ...prev,
+      [eventName]: []
+    }));
+
+    setSelectedEvent(eventName);
+    setEventName("");
+  }
+
   function selectEvent(e){
     setSelectedEvent(e);
-    setJudges(events[e] || []);
   }
 
   function addJudge(){
     if(!selectedEvent) return;
     if(lockedEvents[selectedEvent]) return alert("Event locked");
-    if(judges.length>=6) return;
 
-    const updated=[...judges,newJudge];
-    setEvents(prev=>({...prev,[selectedEvent]:updated}));
-    setJudges(updated);
+    setEvents(prev=>({
+      ...prev,
+      [selectedEvent]: [...prev[selectedEvent], newJudge]
+    }));
+
     setNewJudge("");
   }
 
   function lockEvent(){
+    if(!selectedEvent) return;
+    if(events[selectedEvent].length === 0) return alert("Add judges first");
+
     setLockedEvents(prev=>({...prev,[selectedEvent]:true}));
   }
 
+  // ---------- SCORE ----------
   function setScore(cat,val){
     setScores(prev=>({...prev,[cat]:val}));
   }
@@ -105,6 +115,7 @@ export default function App() {
 
   function combineScores(list){
     const grouped={};
+
     list.forEach(r=>{
       if(!grouped[r.car]) grouped[r.car]={...r, totals:[]};
       grouped[r.car].totals.push(r.total);
@@ -134,7 +145,6 @@ export default function App() {
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        {/* BIG SCORE BUTTON */}
         <button style={styles.bigButton} onClick={()=>setScreen("score")}>
           SCORE SHEET
           <br/>
@@ -155,7 +165,6 @@ export default function App() {
           </button>
         ))}
 
-        {/* MOVED TO BOTTOM */}
         <button style={styles.button} onClick={()=>setScreen("setup")}>New Event</button>
         <button style={styles.button} onClick={()=>setScreen("judge")}>Judge Login</button>
       </div>
@@ -168,34 +177,52 @@ export default function App() {
       <div style={styles.container}>
         <h2>Create Event</h2>
 
-        <input style={styles.input}
-          value={eventName}
-          onChange={(e)=>setEventName(e.target.value)}
-          placeholder="Event Name"
-        />
+        <input style={styles.input} value={eventName}
+          onChange={(e)=>setEventName(e.target.value)} placeholder="Event Name"/>
 
-        <button style={styles.button} onClick={()=>{
-          if(!eventName) return;
-          setEvents(prev=>({...prev,[eventName]:[]}));
-          setEventName("");
-        }}>
-          Create
-        </button>
+        <button style={styles.button} onClick={createEvent}>Create</button>
 
+        <h3>Events</h3>
         {Object.keys(events).map(e=>(
           <button key={e} style={styles.button} onClick={()=>selectEvent(e)}>
             {e} {lockedEvents[e] ? "🔒" : ""}
           </button>
         ))}
 
-        <input style={styles.input}
-          value={newJudge}
-          onChange={(e)=>setNewJudge(e.target.value)}
-          placeholder="Judge Name"
-        />
+        <h3>Judges</h3>
+        {events[selectedEvent]?.map(j=><div key={j}>{j}</div>)}
+
+        <input style={styles.input} value={newJudge}
+          onChange={(e)=>setNewJudge(e.target.value)} placeholder="Judge Name"/>
 
         <button style={styles.button} onClick={addJudge}>Add Judge</button>
         <button style={styles.button} onClick={lockEvent}>🔒 Lock Event</button>
+
+        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+      </div>
+    );
+  }
+
+  // ================= JUDGE LOGIN =================
+  if(screen==="judge"){
+    return(
+      <div style={styles.container}>
+        <h2>Select Event</h2>
+
+        {Object.keys(events).map(e=>(
+          <button key={e} style={styles.button} onClick={()=>selectEvent(e)}>
+            {e}
+          </button>
+        ))}
+
+        <h3>Select Judge</h3>
+
+        {events[selectedEvent]?.map(j=>(
+          <button key={j} style={styles.button}
+            onClick={()=>{setSelectedJudge(j);setScreen("score");}}>
+            {j}
+          </button>
+        ))}
 
         <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
       </div>
