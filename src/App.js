@@ -14,7 +14,6 @@ export default function App() {
 
   const [results, setResults] = useState([]);
 
-  // ✅ NEW (SAFE)
   const [lockedEvents, setLockedEvents] = useState({});
   const [archivedEvents, setArchivedEvents] = useState({});
 
@@ -50,12 +49,7 @@ export default function App() {
 
   function addJudge(){
     if(!selectedEvent || !newJudge) return;
-
-    // ✅ LOCK CHECK
-    if(lockedEvents[selectedEvent]) {
-      alert("Event is locked");
-      return;
-    }
+    if(lockedEvents[selectedEvent]) return alert("Event is locked");
 
     setEvents(prev => ({
       ...prev,
@@ -64,19 +58,16 @@ export default function App() {
     setNewJudge("");
   }
 
-  // ✅ NEW LOCK FUNCTION
   function lockEvent(){
     if(!selectedEvent) return;
     setLockedEvents(prev => ({ ...prev, [selectedEvent]: true }));
   }
 
-  // ✅ NEW ARCHIVE FUNCTION
   function archiveEvent(){
     if(!selectedEvent) return;
 
     setArchivedEvents(prev => ({ ...prev, [selectedEvent]: true }));
 
-    // remove from active list
     setEvents(prev => {
       const copy = { ...prev };
       delete copy[selectedEvent];
@@ -151,7 +142,7 @@ export default function App() {
 
   function printPage(){ window.print(); }
 
-  // ================= HOME =================
+  // HOME
   if(screen==="home"){
     return(
       <div style={styles.container}>
@@ -176,12 +167,12 @@ export default function App() {
 
         <button style={styles.button} onClick={()=>setScreen("judge")}>Event / Judge Login</button>
         <button style={styles.button} onClick={()=>setScreen("score")}>Resume Judging</button>
-        <button style={styles.button} onClick={()=>{setBoardType("overall");setScreen("leaderboard");}}>Leaderboard</button>
+        <button style={styles.button} onClick={()=>setScreen("leaderboard")}>Leaderboard</button>
       </div>
     );
   }
 
-  // ================= JUDGE =================
+  // JUDGE
   if(screen==="judge"){
     return(
       <div style={styles.container}>
@@ -204,7 +195,6 @@ export default function App() {
           </button>
         ))}
 
-        {/* NEW BUTTONS */}
         <button style={styles.button} onClick={lockEvent}>Lock Event</button>
         <button style={styles.button} onClick={archiveEvent}>Archive Event</button>
 
@@ -213,7 +203,78 @@ export default function App() {
     );
   }
 
-  // ================= SCORE + LEADERBOARD REMAIN UNCHANGED =================
+  // SCORE
+  if(screen==="score"){
+    return(
+      <div style={styles.container}>
+        <h2>{selectedEvent}</h2>
+        <h3>{selectedJudge}</h3>
+
+        <input style={styles.input} value={car} onChange={(e)=>setCar(e.target.value)} placeholder="Car No / Rego"/>
+
+        <div style={styles.row}>
+          <button style={{...styles.smallBtn,...(gender==="M"?styles.active:{})}} onClick={()=>setGender("M")}>Male</button>
+          <button style={{...styles.smallBtn,...(gender==="F"?styles.active:{})}} onClick={()=>setGender("F")}>Female</button>
+        </div>
+
+        <div style={styles.row}>
+          {classes.map(c=>(
+            <button key={c} style={{...styles.smallBtn,...(carClass===c?styles.active:{})}} onClick={()=>setCarClass(c)}>{c}</button>
+          ))}
+        </div>
+
+        {categories.map(cat=>(
+          <div key={cat}>
+            <div style={styles.label}>{cat}</div>
+            <div style={styles.scoreRow}>
+              {[...Array(20)].map((_,i)=>(
+                <button key={i} style={{...styles.scoreBtn,...(scores[cat]===i+1?styles.active:{})}} onClick={()=>setScore(cat,i+1)}>{i+1}</button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div style={styles.row}>
+          <button style={{...styles.smallBtn,...(tyres.left?styles.active:{})}} onClick={()=>toggleTyre("left")}>Left +5</button>
+          <button style={{...styles.smallBtn,...(tyres.right?styles.active:{})}} onClick={()=>toggleTyre("right")}>Right +5</button>
+        </div>
+
+        <div style={styles.row}>
+          {deductionList.map(d=>(
+            <button key={d} style={{...styles.smallBtn,...(deductions.includes(d)?styles.active:{})}} onClick={()=>toggleDeduction(d)}>{d}</button>
+          ))}
+        </div>
+
+        <h2>Total: {totalScore()}</h2>
+
+        <button style={styles.button} onClick={submitScore}>Submit</button>
+        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+      </div>
+    );
+  }
+
+  // LEADERBOARD
+  if(screen==="leaderboard"){
+    const data = sort(combineScores(getEventResults()));
+
+    return(
+      <div style={styles.container}>
+        <h2>Leaderboard</h2>
+        <button style={styles.button} onClick={printPage}>Print</button>
+
+        {data.map((r,i)=>{
+          const d = r.deductions.length ? ` - ${r.deductions.join(", ").toLowerCase()}` : "";
+          return(
+            <div key={i}>
+              #{i+1} | {r.car} {r.gender} | {r.carClass}{d} ={r.total}
+            </div>
+          );
+        })}
+
+        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+      </div>
+    );
+  }
 
   return null;
 }
