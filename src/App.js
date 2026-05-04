@@ -3,7 +3,6 @@ import React, { useState } from "react";
 export default function App() {
 
   const [screen, setScreen] = useState("home");
-  const [boardType, setBoardType] = useState("overall");
 
   const [events, setEvents] = useState({});
   const [selectedEvent, setSelectedEvent] = useState("");
@@ -46,22 +45,28 @@ export default function App() {
       width:"100%"
     },
 
+    smallBtn:{
+      padding:"8px 12px",
+      background:"#2a2a2a",
+      color:"#fff",
+      border:"1px solid #666"
+    },
+
     active:{background:"#ff2a2a"},
 
-    row:{display:"flex",flexWrap:"wrap",gap:"6px"},
+    row:{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"10px"},
 
-    // 🔥 FIXED SCORE ROW (single line)
     scoreRow:{
       display:"flex",
       flexWrap:"nowrap",
-      overflowX:"auto",
       gap:"4px",
+      overflowX:"auto",
       marginBottom:"10px"
     },
 
     scoreBtn:{
-      minWidth:"36px",
-      height:"36px",
+      minWidth:"32px",
+      height:"32px",
       background:"#2a2a2a",
       border:"1px solid #666",
       color:"#fff",
@@ -69,7 +74,7 @@ export default function App() {
     },
 
     input:{
-      padding:"14px",
+      padding:"12px",
       margin:"6px 0",
       width:"100%",
       background:"#111",
@@ -93,12 +98,10 @@ export default function App() {
 
   function addJudge(){
     if(!selectedEvent || !newJudge) return;
-
     setEvents(prev => ({
       ...prev,
       [selectedEvent]: [...(prev[selectedEvent] || []), newJudge]
     }));
-
     setNewJudge("");
   }
 
@@ -133,8 +136,6 @@ export default function App() {
     setCar(""); setGender(""); setCarClass("");
     setScores({}); setTyres({left:false,right:false}); setDeductions([]);
   }
-
-  function printPage(){ window.print(); }
 
   // ================= HOME =================
   if(screen==="home"){
@@ -238,32 +239,31 @@ export default function App() {
           placeholder="Car No / Rego"
         />
 
+        {/* INLINE GENDER */}
         <div style={styles.row}>
-          <button style={{...styles.button,...(gender==="M"?styles.active:{})}} onClick={()=>setGender("M")}>Male</button>
-          <button style={{...styles.button,...(gender==="F"?styles.active:{})}} onClick={()=>setGender("F")}>Female</button>
+          <button style={{...styles.smallBtn,...(gender==="M"?styles.active:{})}} onClick={()=>setGender("M")}>Male</button>
+          <button style={{...styles.smallBtn,...(gender==="F"?styles.active:{})}} onClick={()=>setGender("F")}>Female</button>
         </div>
 
+        {/* INLINE CLASS */}
         <div style={styles.row}>
           {classes.map(c=>(
             <button key={c}
-              style={{...styles.button,...(carClass===c?styles.active:{})}}
+              style={{...styles.smallBtn,...(carClass===c?styles.active:{})}}
               onClick={()=>setCarClass(c)}>
               {c}
             </button>
           ))}
         </div>
 
-        {/* 🔥 FIXED SCORE LAYOUT */}
+        {/* SCORE ROWS */}
         {categories.map(cat=>(
           <div key={cat}>
             <div style={styles.label}>{cat}</div>
             <div style={styles.scoreRow}>
               {[...Array(20)].map((_,i)=>(
                 <button key={i}
-                  style={{
-                    ...styles.scoreBtn,
-                    ...(scores[cat]===i+1 ? styles.active : {})
-                  }}
+                  style={{...styles.scoreBtn,...(scores[cat]===i+1?styles.active:{})}}
                   onClick={()=>setScore(cat,i+1)}>
                   {i+1}
                 </button>
@@ -272,15 +272,17 @@ export default function App() {
           </div>
         ))}
 
+        {/* TYRES */}
         <div style={styles.row}>
-          <button style={{...styles.button,...(tyres.left?styles.active:{})}} onClick={()=>toggleTyre("left")}>Left Tyre +5</button>
-          <button style={{...styles.button,...(tyres.right?styles.active:{})}} onClick={()=>toggleTyre("right")}>Right Tyre +5</button>
+          <button style={{...styles.smallBtn,...(tyres.left?styles.active:{})}} onClick={()=>toggleTyre("left")}>Left +5</button>
+          <button style={{...styles.smallBtn,...(tyres.right?styles.active:{})}} onClick={()=>toggleTyre("right")}>Right +5</button>
         </div>
 
+        {/* DEDUCTIONS */}
         <div style={styles.row}>
           {deductionList.map(d=>(
             <button key={d}
-              style={{...styles.button,...(deductions.includes(d)?styles.active:{})}}
+              style={{...styles.smallBtn,...(deductions.includes(d)?styles.active:{})}}
               onClick={()=>toggleDeduction(d)}>
               {d}
             </button>
