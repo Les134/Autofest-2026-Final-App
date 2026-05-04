@@ -46,7 +46,6 @@ export default function App() {
       width:"100%"
     },
 
-    // 🔥 Bigger but still inline
     smallBtn:{
       padding:"10px 16px",
       background:"#2a2a2a",
@@ -65,7 +64,6 @@ export default function App() {
       marginBottom:"10px"
     },
 
-    // 🔥 Bigger score buttons but still single line
     scoreRow:{
       display:"flex",
       flexWrap:"nowrap",
@@ -141,7 +139,14 @@ export default function App() {
 
     setResults(prev=>[
       ...prev,
-      { event:selectedEvent, car, gender, carClass, total: totalScore(), deductions }
+      {
+        event:selectedEvent,
+        car,
+        gender,
+        carClass,
+        total: totalScore(),
+        deductions
+      }
     ]);
 
     setCar(""); setGender(""); setCarClass("");
@@ -244,11 +249,17 @@ export default function App() {
 
         <button style={styles.button} onClick={printPage}>Print</button>
 
-        {sort(data).map((r,i)=>(
-          <div key={i}>
-            #{i+1} | {r.car} | {r.carClass} | {r.total}
-          </div>
-        ))}
+        {sort(data).map((r,i)=>{
+          const d = r.deductions.length
+            ? ` - ${r.deductions.join(", ").toLowerCase()}`
+            : "";
+
+          return (
+            <div key={i}>
+              #{i+1} | {r.car} {r.gender} | {r.carClass}{d} ={r.total}
+            </div>
+          );
+        })}
 
         <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
       </div>
@@ -299,7 +310,6 @@ export default function App() {
   if(screen==="score"){
     return(
       <div style={styles.container}>
-
         <h2>{selectedEvent}</h2>
         <h3>{selectedJudge}</h3>
 
@@ -358,7 +368,6 @@ export default function App() {
 
         <button style={styles.button} onClick={submitScore}>Submit</button>
         <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
-
       </div>
     );
   }
