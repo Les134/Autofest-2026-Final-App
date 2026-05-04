@@ -6,8 +6,6 @@ export default function App() {
   const [boardType, setBoardType] = useState("overall");
 
   const [events, setEvents] = useState({});
-  const [lockedEvents, setLockedEvents] = useState({});
-
   const [selectedEvent, setSelectedEvent] = useState("");
   const [selectedJudge, setSelectedJudge] = useState("");
 
@@ -45,6 +43,26 @@ export default function App() {
     scoreBtn:{width:"44px",height:"44px",background:"#2a2a2a",border:"2px solid #555",color:"#fff"}
   };
 
+  // ✅ CREATE EVENT
+  function createEvent(){
+    if(!eventName) return;
+    setEvents(prev => ({ ...prev, [eventName]: [] }));
+    setSelectedEvent(eventName);
+    setEventName("");
+  }
+
+  // ✅ ADD JUDGE
+  function addJudge(){
+    if(!selectedEvent || !newJudge) return;
+
+    setEvents(prev => ({
+      ...prev,
+      [selectedEvent]: [...(prev[selectedEvent] || []), newJudge]
+    }));
+
+    setNewJudge("");
+  }
+
   function setScore(cat,val){
     setScores(prev=>({...prev,[cat]:val}));
   }
@@ -66,6 +84,8 @@ export default function App() {
   }
 
   function submitScore(){
+    if(!selectedEvent || !selectedJudge) return alert("Select Event & Judge");
+
     setResults(prev=>[
       ...prev,
       { event:selectedEvent, car, gender, carClass, total: totalScore(), deductions }
@@ -104,22 +124,19 @@ export default function App() {
   if(screen==="home"){
     return(
       <div style={styles.container}>
-
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        {/* 🔴 BIG SCORE BUTTON */}
-        <button
-          style={{
-            padding:"32px",
-            marginBottom:"12px",
-            background:"#ff2a2a",
-            color:"#fff",
-            fontSize:"22px",
-            fontWeight:"bold",
-            border:"2px solid #ff0000",
-            width:"100%"
-          }}
-          onClick={()=>setScreen("score")}
+        <button style={{
+          padding:"32px",
+          marginBottom:"12px",
+          background:"#ff2a2a",
+          color:"#fff",
+          fontSize:"22px",
+          fontWeight:"bold",
+          border:"2px solid #ff0000",
+          width:"100%"
+        }}
+        onClick={()=>setScreen("score")}
         >
           SCORE SHEET
           <br/>
@@ -155,20 +172,65 @@ export default function App() {
         <button style={styles.button} onClick={()=>{setBoardType("top30");setScreen("leaderboard");}}>
           Top 30 Finals
         </button>
-
       </div>
     );
   }
 
-  // ================= (ALL OTHER SCREENS UNCHANGED) =================
+  // ================= SETUP =================
+  if(screen==="judge"){
+    return(
+      <div style={styles.container}>
+        <h2>Create / Select Event</h2>
 
+        <input style={styles.input}
+          value={eventName}
+          onChange={(e)=>setEventName(e.target.value)}
+          placeholder="Event Name"
+        />
+
+        <button style={styles.button} onClick={createEvent}>Create Event</button>
+
+        {Object.keys(events).map(e=>(
+          <button key={e} style={styles.button}
+            onClick={()=>setSelectedEvent(e)}>
+            {e}
+          </button>
+        ))}
+
+        <h3>Add Judges</h3>
+
+        <input style={styles.input}
+          value={newJudge}
+          onChange={(e)=>setNewJudge(e.target.value)}
+          placeholder="Judge Name"
+        />
+
+        <button style={styles.button} onClick={addJudge}>Add Judge</button>
+
+        {events[selectedEvent]?.map(j=>(
+          <button key={j} style={styles.button}
+            onClick={()=>{
+              setSelectedJudge(j);
+              setScreen("score");
+            }}>
+            {j}
+          </button>
+        ))}
+
+        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+      </div>
+    );
+  }
+
+  // ================= SCORE =================
   if(screen==="score"){
     return(
       <div style={styles.container}>
         <h2>{selectedEvent}</h2>
         <h3>{selectedJudge}</h3>
 
-        <input style={styles.input} value={car}
+        <input style={styles.input}
+          value={car}
           onChange={(e)=>setCar(e.target.value)}
           placeholder="Car No / Rego"
         />
@@ -221,28 +283,6 @@ export default function App() {
         <h2>Total: {totalScore()}</h2>
 
         <button style={styles.button} onClick={submitScore}>Submit</button>
-        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
-      </div>
-    );
-  }
-
-  if(screen==="leaderboard"){
-    let data = combineScores(getEventResults());
-
-    if(boardType==="female") data = data.filter(r=>r.gender==="F");
-    if(boardType==="top30") data = sort(data).slice(0,30);
-    if(boardType==="top150") data = sort(data).slice(0,150);
-
-    return(
-      <div style={styles.container}>
-        <h2>{boardType} Leaderboard</h2>
-
-        <button style={styles.button} onClick={printPage}>Print</button>
-
-        {sort(data).map((r,i)=>(
-          <div key={i}>#{i+1}{r.gender} | {r.car} | {r.carClass} | {r.total}</div>
-        ))}
-
         <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
