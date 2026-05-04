@@ -38,35 +38,57 @@ export default function App() {
 
   const styles = {
     container:{background:"#000",color:"#fff",minHeight:"100vh",padding:"18px"},
-    button:{padding:"16px",margin:"6px 0",background:"#2a2a2a",color:"#fff",border:"2px solid #555"},
+
+    section:{
+      border:"1px solid #333",
+      padding:"12px",
+      margin:"10px 0"
+    },
+
+    button:{
+      padding:"14px",
+      margin:"4px",
+      background:"#2a2a2a",
+      color:"#fff",
+      border:"2px solid #555"
+    },
+
     bigButton:{
-      padding:"26px",
+      padding:"28px",
       margin:"10px 0",
       background:"#ff2a2a",
       color:"#fff",
       fontSize:"22px",
       fontWeight:"bold",
-      border:"2px solid #ff0000"
+      border:"2px solid #ff0000",
+      width:"100%"
     },
-    active:{background:"#ff2a2a"},
-    row:{display:"flex",flexWrap:"wrap",gap:"6px"},
-    input:{padding:"14px",margin:"6px 0",width:"100%",background:"#111",color:"#fff",border:"2px solid #555"},
-    scoreBtn:{width:"44px",height:"44px",background:"#2a2a2a",border:"2px solid #555",color:"#fff"}
+
+    row:{
+      display:"flex",
+      flexWrap:"wrap",
+      gap:"6px"
+    },
+
+    input:{
+      padding:"14px",
+      margin:"6px 0",
+      width:"100%",
+      background:"#111",
+      color:"#fff",
+      border:"2px solid #555"
+    },
+
+    scoreBtn:{
+      width:"44px",
+      height:"44px",
+      background:"#2a2a2a",
+      border:"2px solid #555",
+      color:"#fff"
+    },
+
+    active:{background:"#ff2a2a"}
   };
-
-  function selectEvent(e){ setSelectedEvent(e); }
-
-  function addJudge(){
-    if(!selectedEvent) return;
-    if(lockedEvents[selectedEvent]) return;
-
-    setEvents(prev=>({
-      ...prev,
-      [selectedEvent]: [...prev[selectedEvent], newJudge]
-    }));
-
-    setNewJudge("");
-  }
 
   function setScore(cat,val){
     setScores(prev=>({...prev,[cat]:val}));
@@ -130,43 +152,55 @@ export default function App() {
 
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        {/* 🔴 BIG SCORE BUTTON AT TOP */}
+        {/* 🔴 TOP SCORE BUTTON */}
         <button style={styles.bigButton} onClick={()=>setScreen("score")}>
           SCORE SHEET
           <br/>
-          {selectedEvent || "NO EVENT"}  
+          {selectedEvent || "NO EVENT"}
           <br/>
           {selectedJudge || "NO JUDGE"}
         </button>
 
-        <h3>Leaderboards</h3>
+        {/* 📊 LEADERBOARDS SECTION */}
+        <div style={styles.section}>
+          <h3>Leaderboards</h3>
 
-        <button style={styles.button} onClick={()=>{setBoardType("top150");setScreen("leaderboard");}}>Top 150</button>
-        <button style={styles.button} onClick={()=>{setBoardType("top30");setScreen("leaderboard");}}>Top 30</button>
-        <button style={styles.button} onClick={()=>{setBoardType("female");setScreen("leaderboard");}}>Female</button>
+          <div style={styles.row}>
+            <button style={styles.button} onClick={()=>{setBoardType("top150");setScreen("leaderboard");}}>Top 150</button>
+            <button style={styles.button} onClick={()=>{setBoardType("top30");setScreen("leaderboard");}}>Top 30</button>
+            <button style={styles.button} onClick={()=>{setBoardType("female");setScreen("leaderboard");}}>Female</button>
+          </div>
 
-        <h4>Leaders by Class</h4>
-        {classes.map(c=>(
-          <button key={c} style={styles.button}
-            onClick={()=>{setBoardType(c);setScreen("leaderboard");}}>
-            {c}
+          <h4>Leaders by Class</h4>
+
+          <div style={styles.row}>
+            {classes.map(c=>(
+              <button key={c} style={styles.button}
+                onClick={()=>{setBoardType(c);setScreen("leaderboard");}}>
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ⚙️ LOGIN SECTION */}
+        <div style={styles.section}>
+          <h3>Event Controls</h3>
+
+          <button style={styles.button} onClick={()=>setScreen("setup")}>
+            New Event
           </button>
-        ))}
 
-        {/* 🔽 ONLY LABEL CHANGE HERE */}
-        <button style={styles.button} onClick={()=>setScreen("setup")}>
-          New Event
-        </button>
-
-        <button style={styles.button} onClick={()=>setScreen("judge")}>
-          Event / Judge Login
-        </button>
+          <button style={styles.button} onClick={()=>setScreen("judge")}>
+            Event / Judge Login
+          </button>
+        </div>
 
       </div>
     );
   }
 
-  // ===== EVERYTHING ELSE UNCHANGED =====
+  // ===== REST OF FILE UNCHANGED =====
 
   if(screen==="score"){
     return(
@@ -174,7 +208,8 @@ export default function App() {
         <h2>{selectedEvent}</h2>
         <h3>{selectedJudge}</h3>
 
-        <input style={styles.input} value={car}
+        <input style={styles.input}
+          value={car}
           onChange={(e)=>setCar(e.target.value)}
           placeholder="Car No / Rego"
         />
