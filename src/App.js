@@ -36,20 +36,71 @@ export default function App() {
 
   const styles = {
     container:{background:"#000",color:"#fff",minHeight:"100vh",padding:"18px"},
-    button:{padding:"16px",margin:"6px 0",background:"#2a2a2a",color:"#fff",border:"2px solid #555",width:"100%"},
-    active:{background:"#ff2a2a"},
-    row:{display:"flex",flexWrap:"wrap",gap:"6px",marginBottom:"10px"},
-    input:{padding:"14px",margin:"6px 0",width:"100%",background:"#111",color:"#fff",border:"2px solid #555"},
-    scoreBtn:{
-      width:"40px",
-      height:"40px",
+
+    button:{
+      padding:"16px",
+      margin:"6px 0",
       background:"#2a2a2a",
-      border:"2px solid #555",
       color:"#fff",
-      fontWeight:"bold"
+      border:"2px solid #555",
+      width:"100%"
     },
-    label:{marginTop:"12px",marginBottom:"4px",fontWeight:"bold"}
+
+    active:{background:"#ff2a2a"},
+
+    row:{display:"flex",flexWrap:"wrap",gap:"6px"},
+
+    // 🔥 FIXED SCORE ROW (single line)
+    scoreRow:{
+      display:"flex",
+      flexWrap:"nowrap",
+      overflowX:"auto",
+      gap:"4px",
+      marginBottom:"10px"
+    },
+
+    scoreBtn:{
+      minWidth:"36px",
+      height:"36px",
+      background:"#2a2a2a",
+      border:"1px solid #666",
+      color:"#fff",
+      fontSize:"12px"
+    },
+
+    input:{
+      padding:"14px",
+      margin:"6px 0",
+      width:"100%",
+      background:"#111",
+      color:"#fff",
+      border:"2px solid #555"
+    },
+
+    label:{
+      marginTop:"10px",
+      marginBottom:"4px",
+      fontSize:"13px"
+    }
   };
+
+  function createEvent(){
+    if(!eventName) return;
+    setEvents(prev => ({ ...prev, [eventName]: [] }));
+    setSelectedEvent(eventName);
+    setEventName("");
+  }
+
+  function addJudge(){
+    if(!selectedEvent || !newJudge) return;
+
+    setEvents(prev => ({
+      ...prev,
+      [selectedEvent]: [...(prev[selectedEvent] || []), newJudge]
+    }));
+
+    setNewJudge("");
+  }
 
   function setScore(cat,val){
     setScores(prev=>({...prev,[cat]:val}));
@@ -139,14 +190,7 @@ export default function App() {
           placeholder="Event Name"
         />
 
-        <button style={styles.button} onClick={()=>{
-          if(!eventName) return;
-          setEvents(prev=>({...prev,[eventName]:[]}));
-          setSelectedEvent(eventName);
-          setEventName("");
-        }}>
-          Create Event
-        </button>
+        <button style={styles.button} onClick={createEvent}>Create Event</button>
 
         {Object.keys(events).map(e=>(
           <button key={e} style={styles.button}
@@ -163,16 +207,7 @@ export default function App() {
           placeholder="Judge Name"
         />
 
-        <button style={styles.button} onClick={()=>{
-          if(!selectedEvent || !newJudge) return;
-          setEvents(prev=>({
-            ...prev,
-            [selectedEvent]: [...(prev[selectedEvent]||[]), newJudge]
-          }));
-          setNewJudge("");
-        }}>
-          Add Judge
-        </button>
+        <button style={styles.button} onClick={addJudge}>Add Judge</button>
 
         {events[selectedEvent]?.map(j=>(
           <button key={j} style={styles.button}
@@ -203,13 +238,11 @@ export default function App() {
           placeholder="Car No / Rego"
         />
 
-        {/* GENDER */}
         <div style={styles.row}>
           <button style={{...styles.button,...(gender==="M"?styles.active:{})}} onClick={()=>setGender("M")}>Male</button>
           <button style={{...styles.button,...(gender==="F"?styles.active:{})}} onClick={()=>setGender("F")}>Female</button>
         </div>
 
-        {/* CLASS */}
         <div style={styles.row}>
           {classes.map(c=>(
             <button key={c}
@@ -220,14 +253,17 @@ export default function App() {
           ))}
         </div>
 
-        {/* SCORES */}
+        {/* 🔥 FIXED SCORE LAYOUT */}
         {categories.map(cat=>(
           <div key={cat}>
             <div style={styles.label}>{cat}</div>
-            <div style={styles.row}>
+            <div style={styles.scoreRow}>
               {[...Array(20)].map((_,i)=>(
                 <button key={i}
-                  style={{...styles.scoreBtn,...(scores[cat]===i+1?styles.active:{})}}
+                  style={{
+                    ...styles.scoreBtn,
+                    ...(scores[cat]===i+1 ? styles.active : {})
+                  }}
                   onClick={()=>setScore(cat,i+1)}>
                   {i+1}
                 </button>
@@ -236,19 +272,11 @@ export default function App() {
           </div>
         ))}
 
-        {/* TYRES */}
-        <div style={styles.label}>Tyres</div>
         <div style={styles.row}>
-          <button style={{...styles.button,...(tyres.left?styles.active:{})}} onClick={()=>toggleTyre("left")}>
-            Left Tyre +5
-          </button>
-          <button style={{...styles.button,...(tyres.right?styles.active:{})}} onClick={()=>toggleTyre("right")}>
-            Right Tyre +5
-          </button>
+          <button style={{...styles.button,...(tyres.left?styles.active:{})}} onClick={()=>toggleTyre("left")}>Left Tyre +5</button>
+          <button style={{...styles.button,...(tyres.right?styles.active:{})}} onClick={()=>toggleTyre("right")}>Right Tyre +5</button>
         </div>
 
-        {/* DEDUCTIONS */}
-        <div style={styles.label}>Deductions</div>
         <div style={styles.row}>
           {deductionList.map(d=>(
             <button key={d}
