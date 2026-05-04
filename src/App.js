@@ -3,6 +3,7 @@ import React, { useState } from "react";
 export default function App() {
 
   const [screen, setScreen] = useState("home");
+  const [boardType, setBoardType] = useState("overall");
 
   const [events, setEvents] = useState({});
   const [selectedEvent, setSelectedEvent] = useState("");
@@ -45,32 +46,42 @@ export default function App() {
       width:"100%"
     },
 
+    // 🔥 Bigger but still inline
     smallBtn:{
-      padding:"8px 12px",
+      padding:"10px 16px",
       background:"#2a2a2a",
       color:"#fff",
-      border:"1px solid #666"
+      border:"2px solid #555",
+      fontSize:"14px"
     },
 
     active:{background:"#ff2a2a"},
 
-    row:{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"10px"},
-
-    scoreRow:{
+    row:{
       display:"flex",
+      gap:"8px",
       flexWrap:"nowrap",
-      gap:"4px",
       overflowX:"auto",
       marginBottom:"10px"
     },
 
+    // 🔥 Bigger score buttons but still single line
+    scoreRow:{
+      display:"flex",
+      flexWrap:"nowrap",
+      gap:"6px",
+      overflowX:"auto",
+      marginBottom:"12px"
+    },
+
     scoreBtn:{
-      minWidth:"32px",
-      height:"32px",
+      minWidth:"44px",
+      height:"44px",
       background:"#2a2a2a",
-      border:"1px solid #666",
+      border:"2px solid #666",
       color:"#fff",
-      fontSize:"12px"
+      fontSize:"14px",
+      fontWeight:"bold"
     },
 
     input:{
@@ -85,7 +96,7 @@ export default function App() {
     label:{
       marginTop:"10px",
       marginBottom:"4px",
-      fontSize:"13px"
+      fontSize:"14px"
     }
   };
 
@@ -137,6 +148,31 @@ export default function App() {
     setScores({}); setTyres({left:false,right:false}); setDeductions([]);
   }
 
+  function combineScores(list){
+    const grouped={};
+    list.forEach(r=>{
+      if(!grouped[r.car]) grouped[r.car]={...r, totals:[]};
+      grouped[r.car].totals.push(r.total);
+    });
+
+    return Object.values(grouped).map(g=>{
+      let scores=[...g.totals].sort((a,b)=>a-b);
+      if(scores.length>2) scores=scores.slice(1,-1);
+      const avg=scores.reduce((a,b)=>a+b,0)/scores.length;
+      return {...g,total:Math.round(avg)};
+    });
+  }
+
+  function sort(list){
+    return [...list].sort((a,b)=>b.total-a.total);
+  }
+
+  function getEventResults(){
+    return results.filter(r=>r.event===selectedEvent);
+  }
+
+  function printPage(){ window.print(); }
+
   // ================= HOME =================
   if(screen==="home"){
     return(
@@ -170,23 +206,60 @@ export default function App() {
           Resume Judging
         </button>
 
-        <button style={styles.button}>Leaderboard</button>
-        <button style={styles.button}>Class Leaderboard</button>
-        <button style={styles.button}>Female Overall</button>
-        <button style={styles.button}>Top 150</button>
-        <button style={styles.button}>Top 30 Finals</button>
+        <button style={styles.button} onClick={()=>{setBoardType("overall");setScreen("leaderboard");}}>
+          Leaderboard
+        </button>
+
+        <button style={styles.button} onClick={()=>{setBoardType("class");setScreen("leaderboard");}}>
+          Class Leaderboard
+        </button>
+
+        <button style={styles.button} onClick={()=>{setBoardType("female");setScreen("leaderboard");}}>
+          Female Overall
+        </button>
+
+        <button style={styles.button} onClick={()=>{setBoardType("top150");setScreen("leaderboard");}}>
+          Top 150
+        </button>
+
+        <button style={styles.button} onClick={()=>{setBoardType("top30");setScreen("leaderboard");}}>
+          Top 30 Finals
+        </button>
       </div>
     );
   }
 
-  // ================= EVENT / JUDGE =================
+  // ================= LEADERBOARD =================
+  if(screen==="leaderboard"){
+
+    let data = combineScores(getEventResults());
+
+    if(boardType==="female") data = data.filter(r=>r.gender==="F");
+    if(boardType==="top30") data = sort(data).slice(0,30);
+    if(boardType==="top150") data = sort(data).slice(0,150);
+
+    return(
+      <div style={styles.container}>
+        <h2>{boardType} Leaderboard</h2>
+
+        <button style={styles.button} onClick={printPage}>Print</button>
+
+        {sort(data).map((r,i)=>(
+          <div key={i}>
+            #{i+1} | {r.car} | {r.carClass} | {r.total}
+          </div>
+        ))}
+
+        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+      </div>
+    );
+  }
+
+  // ================= JUDGE =================
   if(screen==="judge"){
     return(
       <div style={styles.container}>
-        <h2>Create / Select Event</h2>
-
-        <input style={styles.input}
-          value={eventName}
+        <input style={styles.input} value={eventName}
           onChange={(e)=>setEventName(e.target.value)}
           placeholder="Event Name"
         />
@@ -200,10 +273,7 @@ export default function App() {
           </button>
         ))}
 
-        <h3>Add Judges</h3>
-
-        <input style={styles.input}
-          value={newJudge}
+        <input style={styles.input} value={newJudge}
           onChange={(e)=>setNewJudge(e.target.value)}
           placeholder="Judge Name"
         />
@@ -239,13 +309,11 @@ export default function App() {
           placeholder="Car No / Rego"
         />
 
-        {/* INLINE GENDER */}
         <div style={styles.row}>
           <button style={{...styles.smallBtn,...(gender==="M"?styles.active:{})}} onClick={()=>setGender("M")}>Male</button>
           <button style={{...styles.smallBtn,...(gender==="F"?styles.active:{})}} onClick={()=>setGender("F")}>Female</button>
         </div>
 
-        {/* INLINE CLASS */}
         <div style={styles.row}>
           {classes.map(c=>(
             <button key={c}
@@ -256,7 +324,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* SCORE ROWS */}
         {categories.map(cat=>(
           <div key={cat}>
             <div style={styles.label}>{cat}</div>
@@ -272,13 +339,11 @@ export default function App() {
           </div>
         ))}
 
-        {/* TYRES */}
         <div style={styles.row}>
           <button style={{...styles.smallBtn,...(tyres.left?styles.active:{})}} onClick={()=>toggleTyre("left")}>Left +5</button>
           <button style={{...styles.smallBtn,...(tyres.right?styles.active:{})}} onClick={()=>toggleTyre("right")}>Right +5</button>
         </div>
 
-        {/* DEDUCTIONS */}
         <div style={styles.row}>
           {deductionList.map(d=>(
             <button key={d}
