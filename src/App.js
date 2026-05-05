@@ -1,241 +1,164 @@
-import React, { useState, useEffect } from "react";
-import { db } from "./firebase";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  updateDoc,
-  doc,
-  query,
-  where
-} from "firebase/firestore";
+import React, { useState } from "react";
 
 export default function App() {
-
   const [screen, setScreen] = useState("home");
-
-  const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [selectedJudge, setSelectedJudge] = useState("");
-
-  const [eventName, setEventName] = useState("");
-  const [newJudge, setNewJudge] = useState("");
-
-  const [results, setResults] = useState([]);
+  const [scores, setScores] = useState([]);
 
   const [car, setCar] = useState("");
   const [gender, setGender] = useState("");
   const [carClass, setCarClass] = useState("");
 
-  const [scores, setScores] = useState({});
-  const [tyres, setTyres] = useState({ left:false, right:false });
+  const [scoresData, setScoresData] = useState({
+    instant: 0,
+    volume: 0,
+    constant: 0,
+    skill: 0
+  });
+
+  const [tyres, setTyres] = useState({ left: false, right: false });
   const [deductions, setDeductions] = useState([]);
 
-  const classes = ["V8 Pro","V8 N/A","6 Cyl Pro","6 Cyl N/A","4 Cyl Open/Rotary"];
-  const categories = ["Instant Smoke","Volume of Smoke","Constant Smoke","Driver Skill & Control"];
-  const deductionList = ["Reversing","Stopping","Barrier","Fire"];
+  const classes = ["V8 Pro", "V8 N/A", "6 Cyl Pro", "6 Cyl N/A", "4 Cyl Open/Rotary"];
 
-  const styles = {
-    page:{background:"#000",color:"#fff",minHeight:"100vh",padding:10},
-    button:{background:"#222",color:"#fff",border:"1px solid #555",padding:10,margin:5},
-    red:{background:"#d60000",fontWeight:"bold"},
-    row:{display:"flex",flexWrap:"wrap",gap:5},
-    score:{width:32,height:32,fontSize:12,border:"1px solid #666",background:"#111",color:"#fff"},
-    active:{background:"#d60000"},
-    input:{padding:10,margin:5,width:"100%",background:"#111",color:"#fff",border:"1px solid #555"}
+  const toggleDeduction = (name) => {
+    setDeductions(deductions.includes(name)
+      ? deductions.filter(d => d !== name)
+      : [...deductions, name]);
   };
 
-  useEffect(()=>{ loadEvents(); },[]);
+  const toggleTyre = (side) => {
+    setTyres({ ...tyres, [side]: !tyres[side] });
+  };
 
-  async function loadEvents(){
-    const snap = await getDocs(collection(db,"events"));
-    setEvents(snap.docs.map(d=>({id:d.id,...d.data()})));
-  }
+  const baseScore =
+    scoresData.instant +
+    scoresData.volume +
+    scoresData.constant +
+    scoresData.skill;
 
-  async function loadScores(){
-    const q = query(collection(db,"scores"), where("eventId","==",selectedEvent.id));
-    const snap = await getDocs(q);
-    setResults(snap.docs.map(d=>d.data()));
-  }
+  const tyreBonus = (tyres.left ? 5 : 0) + (tyres.right ? 5 : 0);
+  const deductionTotal = deductions.length * 10;
 
-  async function createEvent(){
-    const ref = await addDoc(collection(db,"events"),{
-      name:eventName,
-      judges:[],
-      locked:false
-    });
-    setSelectedEvent({id:ref.id,name:eventName,judges:[]});
-    setEventName("");
-    loadEvents();
-  }
+  const totalScore = baseScore + tyreBonus - deductionTotal;
 
-  async function addJudge(){
-    const updated = [...(selectedEvent.judges||[]), newJudge];
-    await updateDoc(doc(db,"events",selectedEvent.id),{judges:updated});
-    setSelectedEvent({...selectedEvent,judges:updated});
-    setNewJudge("");
-  }
+  const submitScore = () => {
+    if (!car || !gender) return alert("Complete all fields");
 
-  function setScore(cat,val){
-    setScores(prev=>({...prev,[cat]:val}));
-  }
+    setScores([
+      ...scores,
+      {
+        car,
+        gender,
+        carClass,
+        base: baseScore,
+        tyreBonus,
+        deductions,
+        total: totalScore
+      }
+    ]);
 
-  function toggleTyre(side){
-    setTyres(prev=>({...prev,[side]:!prev[side]}));
-  }
-
-  function toggleDeduction(d){
-    setDeductions(prev=>prev.includes(d)?prev.filter(x=>x!==d):[...prev,d]);
-  }
-
-  function calcTotal(){
-    const base = Object.values(scores).reduce((a,b)=>a+b,0);
-    const tyre = (tyres.left?5:0)+(tyres.right?5:0);
-    const deduct = deductions.length*10;
-    return base + tyre - deduct;
-  }
-
-  async function submit(){
-    await addDoc(collection(db,"scores"),{
-      eventId:selectedEvent.id,
-      car,
-      gender,
-      carClass,
-      total:calcTotal(),
-      deductions
-    });
-
-    setScores({});
-    setTyres({left:false,right:false});
-    setDeductions([]);
     setCar("");
     setGender("");
     setCarClass("");
+    setScoresData({ instant: 0, volume: 0, constant: 0, skill: 0 });
+    setTyres({ left: false, right: false });
+    setDeductions([]);
+  };
+
+  const grouped = {};
+  scores.forEach(s => {
+    if (!grouped[s.car]) grouped[s.car] = { ...s, total: 0 };
+    grouped[s.car].total += s.total;
+  });
+
+  const leaderboard = Object.values(grouped).sort((a, b) => b.total - a.total);
+  const females = leaderboard.filter(x => x.gender === "F");
+
+  const button = { margin: 3, padding: 6, border: "1px solid #555", background: "#111", color: "#fff" };
+  const active = { ...button, background: "red" };
+
+  function row(r, i) {
+    const d = r.deductions.length ? " - " + r.deductions.join(", ") : "";
+    return `#${i + 1} | Car ${r.car} | ${r.gender} ${r.base + r.tyreBonus}${d} = ${r.total}`;
   }
 
-  function leaderboard(){
-    const grouped={};
-    results.forEach(r=>{
-      if(!grouped[r.car]) grouped[r.car]={...r,total:0};
-      grouped[r.car].total+=r.total;
-    });
-    return Object.values(grouped).sort((a,b)=>b.total-a.total);
-  }
+  // HOME
+  if (screen === "home") {
+    return (
+      <div style={{ padding: 20, background: "#000", color: "#fff", minHeight: "100vh" }}>
+        <h1 style={{ background: "red", padding: 10 }}>AUTOFEST</h1>
 
-  // ================= HOME =================
-  if(screen==="home"){
-    return(
-      <div style={styles.page}>
-        <button style={{...styles.button,...styles.red,width:"100%",fontSize:20}}
-          onClick={()=>setScreen("score")}>
-          SCORE SHEET
-        </button>
-
-        <button style={styles.button} onClick={()=>setScreen("judge")}>
-          Event / Judge Login
-        </button>
-
-        <button style={styles.button} onClick={()=>setScreen("leaderboard")}>
-          Leaderboards
-        </button>
+        <button style={button} onClick={() => setScreen("score")}>Score Sheet</button>
+        <button style={button} onClick={() => setScreen("leaderboard")}>Leaderboards</button>
       </div>
     );
   }
 
-  // ================= JUDGE =================
-  if(screen==="judge"){
-    return(
-      <div style={styles.page}>
-        <input style={styles.input} value={eventName} onChange={e=>setEventName(e.target.value)} placeholder="Event Name"/>
-        <button style={styles.button} onClick={createEvent}>Create Event</button>
+  // SCORE
+  if (screen === "score") {
+    return (
+      <div style={{ padding: 20, background: "#000", color: "#fff" }}>
+        <input value={car} onChange={e => setCar(e.target.value)} placeholder="Car No" />
 
-        {events.map(e=>(
-          <button key={e.id} style={styles.button} onClick={()=>setSelectedEvent(e)}>
-            {e.name}
-          </button>
-        ))}
-
-        <input style={styles.input} value={newJudge} onChange={e=>setNewJudge(e.target.value)} placeholder="Judge Name"/>
-        <button style={styles.button} onClick={addJudge}>Add Judge</button>
-
-        {selectedEvent?.judges?.map(j=>(
-          <button key={j} style={styles.button} onClick={()=>{setSelectedJudge(j);setScreen("score");}}>
-            {j}
-          </button>
-        ))}
-
-        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
-      </div>
-    );
-  }
-
-  // ================= SCORE =================
-  if(screen==="score"){
-    return(
-      <div style={styles.page}>
-        <input style={styles.input} value={car} onChange={e=>setCar(e.target.value)} placeholder="Car No"/>
-
-        <div style={styles.row}>
-          <button style={styles.button} onClick={()=>setGender("Male")}>Male</button>
-          <button style={styles.button} onClick={()=>setGender("Female")}>Female</button>
+        <div>
+          <button style={gender === "M" ? active : button} onClick={() => setGender("M")}>M</button>
+          <button style={gender === "F" ? active : button} onClick={() => setGender("F")}>F</button>
         </div>
 
-        <div style={styles.row}>
-          {classes.map(c=>(
-            <button key={c} style={styles.button} onClick={()=>setCarClass(c)}>{c}</button>
+        <div>
+          {classes.map(c => (
+            <button key={c} style={carClass === c ? active : button} onClick={() => setCarClass(c)}>
+              {c}
+            </button>
           ))}
         </div>
 
-        {categories.map(cat=>(
-          <div key={cat}>
-            <div>{cat}</div>
-            <div style={styles.row}>
-              {[...Array(20)].map((_,i)=>(
-                <button key={i}
-                  style={{...styles.score,...(scores[cat]===i+1?styles.active:{})}}
-                  onClick={()=>setScore(cat,i+1)}>
-                  {i+1}
-                </button>
-              ))}
-            </div>
+        {["instant", "volume", "constant", "skill"].map(type => (
+          <div key={type}>
+            <p>{type}</p>
+            {[...Array(20)].map((_, i) => (
+              <button key={i} style={scoresData[type] === i + 1 ? active : button}
+                onClick={() => setScoresData({ ...scoresData, [type]: i + 1 })}>
+                {i + 1}
+              </button>
+            ))}
           </div>
         ))}
 
-        <div style={styles.row}>
-          <button style={styles.button} onClick={()=>toggleTyre("left")}>Left +5</button>
-          <button style={styles.button} onClick={()=>toggleTyre("right")}>Right +5</button>
+        <div>
+          <button style={tyres.left ? active : button} onClick={() => toggleTyre("left")}>Left +5</button>
+          <button style={tyres.right ? active : button} onClick={() => toggleTyre("right")}>Right +5</button>
         </div>
 
-        <div style={styles.row}>
-          {deductionList.map(d=>(
-            <button key={d} style={styles.button} onClick={()=>toggleDeduction(d)}>{d}</button>
+        <div>
+          {["fire", "reverse", "barrier", "stop"].map(d => (
+            <button key={d} style={deductions.includes(d) ? active : button}
+              onClick={() => toggleDeduction(d)}>
+              {d}
+            </button>
           ))}
         </div>
 
-        <h3>Total: {calcTotal()}</h3>
+        <h3>Total: {totalScore}</h3>
 
-        <button style={{...styles.button,...styles.red}} onClick={submit}>Submit</button>
-        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+        <button style={button} onClick={submitScore}>Submit</button>
+        <button style={button} onClick={() => setScreen("home")}>Home</button>
       </div>
     );
   }
 
-  // ================= LEADERBOARD =================
-  if(screen==="leaderboard"){
-    const data = leaderboard();
+  // LEADERBOARD
+  if (screen === "leaderboard") {
+    return (
+      <div style={{ padding: 20, background: "#000", color: "#fff" }}>
+        <h2>Overall</h2>
+        {leaderboard.map((r, i) => <div key={i}>{row(r, i)}</div>)}
 
-    return(
-      <div style={styles.page}>
-        <h2>Leaderboard</h2>
+        <h2>Female</h2>
+        {females.map((r, i) => <div key={i}>{row(r, i)}</div>)}
 
-        {data.map((r,i)=>(
-          <div key={i}>
-            #{i+1} | {r.car} | {r.gender} | {r.carClass} = {r.total}
-          </div>
-        ))}
-
-        <button style={styles.button} onClick={()=>window.print()}>Print</button>
-        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+        <button onClick={() => window.print()}>Print</button>
+        <button onClick={() => setScreen("home")}>Home</button>
       </div>
     );
   }
