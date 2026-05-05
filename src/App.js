@@ -243,11 +243,14 @@ export default function App() {
 
         <button style={styles.button} onClick={printPage}>Print</button>
 
-        {sort(data).map((r,i)=>(
-          <div key={i}>
-            #{i+1} | {r.car} {r.gender} | {r.carClass} ={r.total}
-          </div>
-        ))}
+        {sort(data).map((r,i)=>{
+          const d = r.deductions.length ? ` - ${r.deductions.join(", ")}` : "";
+          return(
+            <div key={i}>
+              #{i+1} | {r.car} {r.gender} | {r.carClass}{d} ={r.total}
+            </div>
+          );
+        })}
 
         <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
       </div>
