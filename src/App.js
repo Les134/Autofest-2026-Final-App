@@ -139,31 +139,29 @@ export default function App() {
       total
     });
 
-    alert("Saved");
     setCar(""); setGender(""); setCarClass("");
     setScores({}); setTyres({left:false,right:false}); setDeductions([]);
+
+    alert("Saved");
   }
 
-  function combineScores(list){
+  function buildLeaderboard(){
     const grouped={};
-    list.forEach(r=>{
+    results.forEach(r=>{
       if(!grouped[r.car]) grouped[r.car]={...r,total:0};
       grouped[r.car].total += r.total;
     });
-    return Object.values(grouped);
-  }
 
-  function sort(list){
-    return [...list].sort((a,b)=>b.total-a.total);
+    return Object.values(grouped).sort((a,b)=>b.total-a.total);
   }
 
   function formatRow(r,i){
-    const d = r.deductions.length ? " - "+r.deductions.join(", ") : "";
+    const d = r.deductions?.length ? " - "+r.deductions.join(", ").toLowerCase() : "";
     return `#${i+1} | Car ${r.car} | ${r.gender} ${r.base+r.tyreBonus}${d} = ${r.total}`;
   }
 
   function adminLogin(){
-    const pass = prompt("Enter Admin Password");
+    const pass = prompt("Admin Password");
     if(pass===ADMIN_PASSWORD){
       setIsAdmin(true);
       alert("Admin unlocked");
@@ -178,7 +176,6 @@ export default function App() {
 
         <button onClick={()=>setScreen("judge")}>Event / Judge Login</button>
         <button onClick={()=>{loadScores(); setScreen("leaderboard");}}>Leaderboards</button>
-
         <button onClick={adminLogin}>Admin Login</button>
       </div>
     );
@@ -259,12 +256,39 @@ export default function App() {
 
   // LEADERBOARD
   if(screen==="leaderboard"){
-    const data = sort(combineScores(results));
+    const data = buildLeaderboard();
+
+    const females = data.filter(r=>r.gender==="F");
+
+    const byClass = {};
+    data.forEach(r=>{
+      if(!byClass[r.carClass]) byClass[r.carClass]=[];
+      byClass[r.carClass].push(r);
+    });
 
     return(
       <div style={{padding:20}}>
-        {data.map((r,i)=>(
-          <div key={i}>{formatRow(r,i)}</div>
+
+        <h2>Overall</h2>
+        {data.map((r,i)=>(<div key={i}>{formatRow(r,i)}</div>))}
+
+        <h2>Top 30</h2>
+        {data.slice(0,30).map((r,i)=>(<div key={i}>{formatRow(r,i)}</div>))}
+
+        <h2>Top 150</h2>
+        {data.slice(0,150).map((r,i)=>(<div key={i}>{formatRow(r,i)}</div>))}
+
+        <h2>Female</h2>
+        {females.map((r,i)=>(<div key={i}>{formatRow(r,i)}</div>))}
+
+        <h2>By Class</h2>
+        {Object.keys(byClass).map(cls=>(
+          <div key={cls}>
+            <h3>{cls}</h3>
+            {byClass[cls].map((r,i)=>(
+              <div key={i}>{formatRow(r,i)}</div>
+            ))}
+          </div>
         ))}
 
         <button onClick={()=>window.print()}>Print</button>
