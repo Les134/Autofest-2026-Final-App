@@ -150,7 +150,76 @@ export default function App() {
     );
   }
 
-  // JUDGE
+  // LEADERBOARD
+  if(screen==="leaderboard"){
+    let data = combineScores(getEventResults());
+
+    if(boardType==="class"){
+      return(
+        <div style={styles.container}>
+          <h2>Class Leaderboard</h2>
+
+          <button style={styles.button} onClick={printPage}>Print</button>
+
+          {classes.map(cls=>{
+            const classData = sort(data.filter(r=>r.carClass===cls));
+            if(classData.length===0) return null;
+
+            return(
+              <div key={cls}>
+                <h3>{cls}</h3>
+                {classData.map((r,i)=>{
+                  const d = r.deductions.length ? ` - ${r.deductions.join(", ")}` : "";
+                  return(
+                    <div key={i}>
+                      #{i+1} | {r.car} {r.gender} | {r.carClass}{d} ={r.total}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+
+          <h3>Female</h3>
+          {sort(data.filter(r=>r.gender==="F")).map((r,i)=>{
+            const d = r.deductions.length ? ` - ${r.deductions.join(", ")}` : "";
+            return(
+              <div key={i}>
+                #{i+1} | {r.car} {r.gender} | {r.carClass}{d} ={r.total}
+              </div>
+            );
+          })}
+
+          <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+        </div>
+      );
+    }
+
+    if(boardType==="female") data = data.filter(r=>r.gender==="F");
+    if(boardType==="top30") data = sort(data).slice(0,30);
+    if(boardType==="top150") data = sort(data).slice(0,150);
+
+    return(
+      <div style={styles.container}>
+        <h2>{boardType} Leaderboard</h2>
+
+        <button style={styles.button} onClick={printPage}>Print</button>
+
+        {sort(data).map((r,i)=>{
+          const d = r.deductions.length ? ` - ${r.deductions.join(", ")}` : "";
+          return(
+            <div key={i}>
+              #{i+1} | {r.car} {r.gender} | {r.carClass}{d} ={r.total}
+            </div>
+          );
+        })}
+
+        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+      </div>
+    );
+  }
+
+  // JUDGE + SCORE unchanged
   if(screen==="judge"){
     return(
       <div style={styles.container}>
@@ -173,13 +242,11 @@ export default function App() {
         ))}
 
         <button style={styles.button} onClick={lockEvent}>Lock Event</button>
-
         <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
       </div>
     );
   }
 
-  // SCORE
   if(screen==="score"){
     return(
       <div style={styles.container}>
@@ -229,33 +296,6 @@ export default function App() {
     );
   }
 
-  // LEADERBOARD
-  if(screen==="leaderboard"){
-    let data = combineScores(getEventResults());
-
-    if(boardType==="female") data = data.filter(r=>r.gender==="F");
-    if(boardType==="top30") data = sort(data).slice(0,30);
-    if(boardType==="top150") data = sort(data).slice(0,150);
-
-    return(
-      <div style={styles.container}>
-        <h2>{boardType} Leaderboard</h2>
-
-        <button style={styles.button} onClick={printPage}>Print</button>
-
-        {sort(data).map((r,i)=>{
-          const d = r.deductions.length ? ` - ${r.deductions.join(", ")}` : "";
-          return(
-            <div key={i}>
-              #{i+1} | {r.car} {r.gender} | {r.carClass}{d} ={r.total}
-            </div>
-          );
-        })}
-
-        <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
-      </div>
-    );
-  }
-
   return null;
 }
+
