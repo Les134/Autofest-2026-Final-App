@@ -201,5 +201,60 @@ export default function App() {
   // HOME / JUDGE / SCORE / LEADERBOARD sections remain EXACTLY as your working version
   // (they are already correct in your file — no change needed)
 
-  return null;
+ // HOME
+if(screen==="home"){
+  return(
+    <div style={styles.container}>
+      <h1>🔥 AUTOFEST 🔥</h1>
+
+      <button style={{padding:"32px",marginBottom:"12px",background:"#ff2a2a",color:"#fff",fontSize:"22px",fontWeight:"bold",border:"2px solid #ff0000",width:"100%"}}
+      onClick={()=>setScreen("score")}>
+        SCORE SHEET<br/>
+        {selectedEvent || "NO EVENT"}<br/>
+        {selectedJudge || "NO JUDGE"}
+      </button>
+
+      <button style={styles.button} onClick={()=>setScreen("judge")}>Event / Judge Login</button>
+      <button style={styles.button} onClick={()=>setScreen("score")}>Resume Judging</button>
+
+      <button style={styles.button} onClick={()=>{setBoardType("overall");setScreen("leaderboard");}}>Leaderboard</button>
+      <button style={styles.button} onClick={()=>{setBoardType("class");setScreen("leaderboard");}}>Class Leaderboard</button>
+      <button style={styles.button} onClick={()=>{setBoardType("female");setScreen("leaderboard");}}>Female Overall</button>
+      <button style={styles.button} onClick={()=>{setBoardType("top150");setScreen("leaderboard");}}>Top 150</button>
+      <button style={styles.button} onClick={()=>{setBoardType("top30");setScreen("leaderboard");}}>Top 30 Finals</button>
+    </div>
+  );
+}
+
+// JUDGE
+if(screen==="judge"){
+  return(
+    <div style={styles.container}>
+      <input style={styles.input} value={eventName} onChange={(e)=>setEventName(e.target.value)} placeholder="Event Name"/>
+      <button style={styles.button} onClick={createEvent}>Create Event</button>
+
+      {Object.keys(events).map(e=>(
+        <button key={e} style={styles.button} onClick={()=>setSelectedEvent(e)}>
+          {e} {lockedEvents[e] ? "🔒" : ""}
+        </button>
+      ))}
+
+      <input style={styles.input} value={newJudge} onChange={(e)=>setNewJudge(e.target.value)} placeholder="Judge Name"/>
+      <button style={styles.button} onClick={addJudge}>Add Judge</button>
+
+      {events[selectedEvent]?.map(j=>(
+        <button key={j} style={styles.button} onClick={()=>{ setSelectedJudge(j); setScreen("score"); }}>
+          {j}
+        </button>
+      ))}
+
+      <button style={styles.button} onClick={lockEvent}>Lock Event</button>
+      <button style={styles.button} onClick={archiveEvent}>Archive Event</button>
+
+      <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+    </div>
+  );
+}
+
+// SCORE + LEADERBOARD already exist above in your file
 }
