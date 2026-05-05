@@ -297,6 +297,41 @@ export default function App() {
   if(screen==="leaderboard"){
     let data = combineScores(getEventResults());
 
+    if(boardType==="class"){
+      return(
+        <div style={styles.container}>
+          <h2>Class Leaderboard</h2>
+
+          <button style={styles.button} onClick={printPage}>Print</button>
+
+          {classes.map(cls=>{
+            const classData = sort(data.filter(r=>r.carClass===cls));
+            if(classData.length===0) return null;
+
+            return(
+              <div key={cls}>
+                <h3>{cls}</h3>
+                {classData.map((r,i)=>(
+                  <div key={i}>{formatRow(r,i)}</div>
+                ))}
+              </div>
+            );
+          })}
+
+          <h2>Female Overall</h2>
+          {sort(data.filter(r=>r.gender==="F")).map((r,i)=>(
+            <div key={i}>{formatRow(r,i)}</div>
+          ))}
+
+          <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+        </div>
+      );
+    }
+
+    if(boardType==="female") data = data.filter(r=>r.gender==="F");
+    if(boardType==="top30") data = sort(data).slice(0,30);
+    if(boardType==="top150") data = sort(data).slice(0,150);
+
     return(
       <div style={styles.container}>
         <h2>{boardType} Leaderboard</h2>
