@@ -34,7 +34,6 @@ export default function App() {
     scoreRow:{display:"flex",gap:"6px",overflowX:"auto",marginBottom:"10px"},
     scoreBtn:{minWidth:"44px",height:"44px",background:"#2a2a2a",border:"2px solid #666",color:"#fff"},
     input:{padding:"12px",margin:"6px 0",width:"100%",background:"#111",color:"#fff",border:"2px solid #555"},
-    label:{marginTop:"10px"}
   };
 
   function createEvent(){
@@ -73,8 +72,20 @@ export default function App() {
     return base + tyreBonus - deductions.length*10;
   }
 
+  function isValid(){
+    return (
+      car &&
+      gender &&
+      carClass &&
+      categories.every(cat => scores[cat])
+    );
+  }
+
   function submitScore(){
-    if(!selectedEvent || !selectedJudge) return alert("Select Event & Judge");
+    if(!isValid()){
+      alert("Complete ALL fields before submitting");
+      return;
+    }
 
     setResults(prev=>[
       ...prev,
@@ -89,8 +100,12 @@ export default function App() {
       }
     ]);
 
-    setCar(""); setGender(""); setCarClass("");
-    setScores({}); setTyres({left:false,right:false}); setDeductions([]);
+    setCar("");
+    setGender("");
+    setCarClass("");
+    setScores({});
+    setTyres({left:false,right:false});
+    setDeductions([]);
   }
 
   function combineScores(list){
@@ -112,17 +127,27 @@ export default function App() {
     return results.filter(r=>r.event===selectedEvent);
   }
 
-  // HOME
+  // ================= HOME =================
   if(screen==="home"){
     return(
       <div style={styles.container}>
         <h1>🔥 AUTOFEST 🔥</h1>
 
-        <button style={{padding:"32px",background:"#ff2a2a",width:"100%"}}
-        onClick={()=>setScreen("score")}>
-          SCORE SHEET<br/>
-          {selectedEvent || "NO EVENT"}<br/>
-          {selectedJudge || "NO JUDGE"}
+        <button
+          style={{
+            padding:"32px",
+            background:"#ff2a2a",
+            width:"100%",
+            fontWeight:"bold",
+            color:"#fff",
+            fontSize:"22px",
+            border:"2px solid #ff0000"
+          }}
+          onClick={()=>setScreen("score")}
+        >
+          <div>SCORE SHEET</div>
+          <div>{selectedEvent || "NO EVENT"}</div>
+          <div>{selectedJudge || "NO JUDGE"}</div>
         </button>
 
         <button style={styles.button} onClick={()=>setScreen("judge")}>Event / Judge Login</button>
@@ -137,7 +162,7 @@ export default function App() {
     );
   }
 
-  // JUDGE LOGIN
+  // ================= JUDGE =================
   if(screen==="judge"){
     return(
       <div style={styles.container}>
@@ -173,7 +198,7 @@ export default function App() {
     );
   }
 
-  // SCORE
+  // ================= SCORE =================
   if(screen==="score"){
     return(
       <div style={styles.container}>
@@ -237,9 +262,50 @@ export default function App() {
     );
   }
 
-  // LEADERBOARD
+  // ================= LEADERBOARD =================
   if(screen==="leaderboard"){
     let data = combineScores(getEventResults());
+
+    if(boardType==="class"){
+      return(
+        <div style={styles.container}>
+          <h2>Class Leaderboard</h2>
+
+          {classes.map(cls=>{
+            const classData = sort(data.filter(r=>r.carClass===cls));
+            if(classData.length===0) return null;
+
+            return(
+              <div key={cls}>
+                <h3>{cls}</h3>
+
+                {classData.map((r,i)=>(
+                  <div key={i}>
+                    #{i+1} | {r.car} | {r.total}
+                  </div>
+                ))}
+
+                <h4>Female</h4>
+                {sort(classData.filter(r=>r.gender==="F")).map((r,i)=>(
+                  <div key={i}>
+                    #{i+1} | {r.car} | {r.total}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          <h2>Female Class</h2>
+          {sort(data.filter(r=>r.gender==="F")).map((r,i)=>(
+            <div key={i}>
+              #{i+1} | {r.car} | {r.carClass} | {r.total}
+            </div>
+          ))}
+
+          <button style={styles.button} onClick={()=>setScreen("home")}>Home</button>
+        </div>
+      );
+    }
 
     if(boardType==="female") data = data.filter(r=>r.gender==="F");
     if(boardType==="top30") data = sort(data).slice(0,30);
@@ -262,4 +328,3 @@ export default function App() {
 
   return null;
 }
-
