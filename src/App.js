@@ -36,14 +36,18 @@ export default function App() {
   const deductionList = ["Reversing","Stopping","Barrier","Fire"];
 
   // LOAD EVENTS
-  useEffect(()=>{
-    loadEvents();
-  },[]);
+  useEffect(()=>{ loadEvents(); },[]);
 
   async function loadEvents(){
-    const snapshot = await getDocs(collection(db,"events"));
-    const list = snapshot.docs.map(d=>({ id:d.id, ...d.data() }));
-    setEvents(list);
+    const snap = await getDocs(collection(db,"events"));
+    setEvents(snap.docs.map(d=>({id:d.id,...d.data()})));
+  }
+
+  async function loadScores(){
+    if(!selectedEvent) return;
+    const q = query(collection(db,"scores"), where("eventId","==",selectedEvent.id));
+    const snap = await getDocs(q);
+    setResults(snap.docs.map(d=>d.data()));
   }
 
   async function createEvent(){
@@ -52,7 +56,8 @@ export default function App() {
     await addDoc(collection(db,"events"),{
       name:eventName,
       judges:[],
-      locked:false
+      locked:false,
+      archived:false
     });
 
     setEventName("");
@@ -61,11 +66,10 @@ export default function App() {
 
   async function addJudge(){
     if(!selectedEvent || !newJudge) return;
+    if(selectedEvent.locked) return alert("Event Locked");
 
-    const ref = doc(db,"events",selectedEvent.id);
-
-    await updateDoc(ref,{
-      judges:[...selectedEvent.judges, newJudge]
+    await updateDoc(doc(db,"events",selectedEvent.id),{
+      judges:[...(selectedEvent.judges||[]), newJudge]
     });
 
     setNewJudge("");
@@ -74,10 +78,14 @@ export default function App() {
 
   async function lockEvent(){
     if(!selectedEvent) return;
+    await updateDoc(doc(db,"events",selectedEvent.id),{locked:true});
+    loadEvents();
+  }
 
-    const ref = doc(db,"events",selectedEvent.id);
-    await updateDoc(ref,{ locked:true });
-
+  async function archiveEvent(){
+    if(!selectedEvent) return;
+    await updateDoc(doc(db,"events",selectedEvent.id),{archived:true});
+    setSelectedEvent(null);
     loadEvents();
   }
 
@@ -121,14 +129,6 @@ export default function App() {
 
     setCar(""); setGender(""); setCarClass("");
     setScores({}); setTyres({left:false,right:false}); setDeductions([]);
-  }
-
-  async function loadScores(){
-    if(!selectedEvent) return;
-    const q = query(collection(db,"scores"), where("eventId","==",selectedEvent.id));
-    const snap = await getDocs(q);
-    const list = snap.docs.map(d=>d.data());
-    setResults(list);
   }
 
   function combineScores(list){
@@ -182,15 +182,16 @@ export default function App() {
       <div>
 
         <input value={eventName} onChange={e=>setEventName(e.target.value)} placeholder="Event"/>
-        <button onClick={createEvent}>Create</button>
+        <button onClick={createEvent}>Create Event</button>
 
-        {events.map(e=>(
+        {events.filter(e=>!e.archived).map(e=>(
           <button key={e.id} onClick={()=>setSelectedEvent(e)}>
             {e.name} {e.locked ? "(LOCKED)" : ""}
           </button>
         ))}
 
         <button onClick={lockEvent}>Lock Event</button>
+        <button onClick={archiveEvent}>Archive Event</button>
 
         <input value={newJudge} onChange={e=>setNewJudge(e.target.value)} placeholder="Judge"/>
         <button onClick={addJudge}>Add Judge</button>
@@ -209,10 +210,11 @@ export default function App() {
   if(screen==="score"){
     return(
       <div>
+
         <h3>{selectedEvent?.name}</h3>
         <h4>{selectedJudge}</h4>
 
-        <input value={car} onChange={e=>setCar(e.target.value)} placeholder="Car"/>
+        <input value={car} onChange={e=>setCar(e.target.value)} placeholder="Car No / Rego"/>
 
         <button onClick={()=>setGender("M")}>M</button>
         <button onClick={()=>setGender("F")}>F</button>
@@ -231,6 +233,7 @@ export default function App() {
         ))}
 
         <button onClick={submitScore}>Submit</button>
+
       </div>
     );
   }
@@ -241,6 +244,7 @@ export default function App() {
 
     return(
       <div>
+
         <button onClick={printPage}>Print</button>
 
         {data.map((r,i)=>(
@@ -248,6 +252,7 @@ export default function App() {
         ))}
 
         <button onClick={()=>setScreen("home")}>Home</button>
+
       </div>
     );
   }
